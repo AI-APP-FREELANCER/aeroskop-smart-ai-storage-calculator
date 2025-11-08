@@ -200,7 +200,9 @@ Please recommend the single most appropriate Aeroskop product and provide detail
     tokensInput = Math.ceil((SYSTEM_PROMPT + userPrompt).length / 4);
 
     // Get Gemini model
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Using gemini-2.5-flash as it's available for v1beta API
+    // gemini-pro and gemini-1.5-flash were returning 404 Not Found for v1beta API
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     // Generate response from Gemini
     const result = await model.generateContent(SYSTEM_PROMPT + '\n\n' + userPrompt);
@@ -219,7 +221,7 @@ Please recommend the single most appropriate Aeroskop product and provide detail
     // Capture analytics (non-blocking) - simplified for now
     console.log('📊 Gemini Analytics:', {
       sessionId: analyticsContext?.sessionId,
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash',
       latencyMs: requestEndTime.getTime() - requestStartTime.getTime(),
       status: 'success',
       tokensTotal
@@ -239,7 +241,7 @@ Please recommend the single most appropriate Aeroskop product and provide detail
     // Capture error analytics (non-blocking) - simplified for now
     console.log('📊 Gemini Error Analytics:', {
       sessionId: analyticsContext?.sessionId,
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash',
       latencyMs: requestEndTime.getTime() - requestStartTime.getTime(),
       status: 'error',
       errorCode,

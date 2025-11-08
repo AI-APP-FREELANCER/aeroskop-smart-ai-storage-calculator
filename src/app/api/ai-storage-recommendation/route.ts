@@ -29,17 +29,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate hash for cache lookup
+    // Generate hash for cache lookup - include all parameters
     const inputString = JSON.stringify({
       cameras: body.cameras,
       resolution: body.resolution,
       fps: body.fps,
       codec: body.codec,
-      quality: body.quality,
+      quality: body.quality || 'Medium',
       activity_percent: body.activity_percent,
       recording_hours_per_day: body.recording_hours_per_day,
       retention_days: body.retention_days,
-      recording_mode: body.recording_mode
+      recording_mode: body.recording_mode,
+      pre_record_seconds: body.pre_record_seconds || 2,
+      post_record_seconds: body.post_record_seconds || 5,
+      custom_bitrate: body.custom_bitrate || undefined
     });
     
     const inputHash = createHash('md5').update(inputString).digest('hex');
@@ -89,7 +92,7 @@ export async function POST(request: NextRequest) {
       
       // Extract token usage from AI response (if available)
       const tokensUsed = (aiResponse as any).tokens_used || 0;
-      const modelUsed = (aiResponse as any).model_used || 'gemini-1.5-flash';
+      const modelUsed = (aiResponse as any).model_used || 'gemini-2.5-flash';
       
       // Store in cache
       await query(
@@ -146,9 +149,9 @@ export async function POST(request: NextRequest) {
     } catch (aiError) {
       console.error('AI Generation Error:', aiError);
       
-      // Don't return fallback data - let the frontend handle the error
+      // Return professional error message
       return NextResponse.json(
-        { error: 'AI recommendation generation failed', details: (aiError as Error).message },
+        { error: 'An issue occurred while fetching recommendations from the AI system. Please try again or report this inconsistency to our support team.' },
         { status: 500 }
       );
     }

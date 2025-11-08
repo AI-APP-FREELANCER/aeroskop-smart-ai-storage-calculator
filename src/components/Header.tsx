@@ -194,48 +194,12 @@ export default function Header() {
             Contact
           </Link>
           
-          {/* AI Calculator Links */}
-          <div className="flex items-center gap-2">
-            <Link
-              href="/unified-calculator"
-              className="text-sm font-medium text-white hover:text-blue-200 px-3 py-2 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 transition-colors"
-            >
-              AI Calculator
-            </Link>
-            <Link
-              href="/enhanced-calculator"
-              className="text-sm font-medium text-white hover:text-blue-200 px-3 py-2 rounded-lg bg-green-600/20 hover:bg-green-600/30 transition-colors"
-            >
-              Enhanced Calculator
-            </Link>
-          </div>
-          
-          {/* Sample Pages Navigation */}
-          <div className="flex items-center gap-2">
-            <Link
-              href="/sample2"
-              className="text-sm font-medium text-white hover:text-blue-200 px-2 py-1 rounded"
-            >
-              Sample 2
-            </Link>
-            <Link
-              href="/sample3"
-              className="text-sm font-medium text-white hover:text-blue-200 px-2 py-1 rounded"
-            >
-              Sample 3
-            </Link>
-            <Link
-              href="/sample4"
-              className="text-sm font-medium text-white hover:text-blue-200 px-2 py-1 rounded"
-            >
-              Sample 4
-            </Link>
-          </div>
+          {/* Enhanced Calculator Link */}
           <Link
-            href="https://wa.me/+97377992203"
-            className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700"
+            href="/enhanced-calculator"
+            className="text-sm font-medium text-white hover:text-blue-200 px-3 py-2 rounded-lg bg-green-600/20 hover:bg-green-600/30 transition-colors"
           >
-            Enquire Now
+            Enhanced Calculator
           </Link>
         </nav>
 

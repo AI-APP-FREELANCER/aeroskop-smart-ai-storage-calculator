@@ -1,0 +1,21 @@
+5-6 slides: "Aeroskop AI Smart Recommender - Storage Recommendations"
+
+SLIDE 1 - Gemini AI Integration:
+Tech: Google Gemini AI integrated. Formulas: bitrate=base×(FPS/30)×activity×recording, compression (H.265:0.6x, H.264:1.0x), dynamic matching. Features: Real-time calculations, recommendations. Benefits: 40% cost savings. Visual: Gemini logo, formulas.
+
+SLIDE 2 - Storage Calculation Engine:
+Tech: Bitrate tables (720p/1080p/4K/8K), multipliers (Low:0.3, Med:0.6, High:1.0), modes (Continuous:1.0, Motion:0.3), 20% overhead, RAID. Features: Dynamic selection (NVR <100, Servers 100-400, SDS >400), 6+ products. Benefits: Accurate, scalable. Visual: Formulas, flowcharts.
+
+SLIDE 3 - Unified Calculator + Gemini Chat:
+Features: Calculator + Gemini chat, parameter tracking (cameras/res/FPS/codec/activity/retention), result history, mobile. Tech: Next.js 14+, TypeScript, PostgreSQL/AWS RDS, RESTful APIs. Benefits: Seamless workflow, instant AI. Visual: Calculator screenshots, chat UI.
+
+SLIDE 4 - Analytics Platform:
+Tech: Real-time tracking (sessions, parameters), admin dashboard, PostgreSQL optimized. Features: Parameter analysis, conversion tracking, ROI. Benefits: Market insights, behavior patterns. Visual: Dashboard, metrics.
+
+SLIDE 5 - Enterprise Tools:
+Features: PDF (jsPDF), email/WhatsApp sharing, consultation booking, 8+ catalog. Tech: RESTful APIs, caching, fallbacks. Benefits: Professional docs, enterprise-ready. Visual: PDF preview, sharing UI.
+
+SLIDE 6 - Tech Stack & Results:
+Tech: Next.js 14+, TypeScript, PostgreSQL/AWS RDS, dual AI (Gemini + GPT-4 fallback). Success: 40% cost reduction, 99.9% uptime. Competitive: Gemini AI-first, analytics, pro reporting. Visual: Tech logos (Next.js/PostgreSQL/AWS/Gemini), architecture, metrics.
+
+Style: Professional blue/gray, tech diagrams/formulas. Target: Win AI recommender contracts. Emphasize Gemini AI.

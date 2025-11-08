@@ -1,15 +1,12 @@
-'use client';
-
 import Header from '@/components/Header';
-import UnifiedAICalculator from '@/components/UnifiedAICalculator';
+import EnhancedUnifiedAICalculator from '@/components/EnhancedUnifiedAICalculator';
 
 export default function UnifiedCalculatorPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      
-      <main className="pt-20">
-        <UnifiedAICalculator />
+      <main className="py-8">
+        <EnhancedUnifiedAICalculator />
       </main>
     </div>
   );

@@ -92,10 +92,7 @@ Aeroskop Team`;
         {recommendations.is_fallback && (
           <div className="mx-6 mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-700">
-              📊 Demo Mode: Using intelligent mock recommendations. 
-              <a href="https://platform.openai.com/account/billing" target="_blank" className="underline ml-1">
-                Add OpenAI credits
-              </a> for AI-powered analysis.
+              📊 Demo Mode: Using intelligent mock recommendations. Please check Gemini API configuration for AI-powered analysis.
             </p>
           </div>
         )}

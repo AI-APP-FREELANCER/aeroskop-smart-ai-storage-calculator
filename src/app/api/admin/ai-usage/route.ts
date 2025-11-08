@@ -25,8 +25,8 @@ export async function GET(request: NextRequest) {
     );
     const averageResponseTime = parseFloat(avgResponseResult.rows[0].avg_response);
 
-    // Calculate cost estimate (rough estimate: $0.03 per 1K tokens for GPT-4)
-    const costEstimate = (totalTokens / 1000) * 0.03;
+    // Calculate cost estimate (rough estimate: $0.0001 per 1K tokens for Gemini 1.5 Flash)
+    const costEstimate = (totalTokens / 1000) * 0.0001;
 
     return NextResponse.json({
       totalCalls,

@@ -30,7 +30,72 @@ export const BASE_BITRATE_TABLE: Record<string, Record<number, Record<string, nu
   }
 };
 
-// Professional-grade storage calculation based on industry VMS standards
+// RAID overhead calculation
+export function calculateRAIDOverhead(
+  raidType: 'RAID-1' | 'RAID-5' | 'RAID-6' | 'RAID-Z1' | 'RAID-Z2',
+  totalHDDs: number,
+  driveCapacityTB: number
+): {
+  rawCapacityTB: number;
+  usableCapacityTB: number;
+  overheadPercent: number;
+  overheadTB: number;
+} {
+  const rawCapacityTB = totalHDDs * driveCapacityTB;
+  
+  let overheadPercent: number;
+  let usableCapacityTB: number;
+  
+  switch (raidType) {
+    case 'RAID-1':
+      // Mirroring: 50% overhead
+      overheadPercent = 50;
+      usableCapacityTB = rawCapacityTB * 0.5;
+      break;
+    case 'RAID-5':
+      // Single parity: ~33% overhead (1 drive out of n)
+      overheadPercent = (1 / totalHDDs) * 100;
+      usableCapacityTB = rawCapacityTB * (1 - 1 / totalHDDs);
+      break;
+    case 'RAID-6':
+      // Dual parity: ~50% overhead (2 drives out of n, minimum 4 drives)
+      overheadPercent = totalHDDs >= 4 ? (2 / totalHDDs) * 100 : 50;
+      usableCapacityTB = totalHDDs >= 4 ? rawCapacityTB * (1 - 2 / totalHDDs) : rawCapacityTB * 0.5;
+      break;
+    case 'RAID-Z1':
+      // ZFS single parity: ~33% overhead
+      overheadPercent = (1 / totalHDDs) * 100;
+      usableCapacityTB = rawCapacityTB * (1 - 1 / totalHDDs);
+      break;
+    case 'RAID-Z2':
+      // ZFS dual parity: ~50% overhead (minimum 3 drives)
+      overheadPercent = totalHDDs >= 3 ? (2 / totalHDDs) * 100 : 50;
+      usableCapacityTB = totalHDDs >= 3 ? rawCapacityTB * (1 - 2 / totalHDDs) : rawCapacityTB * 0.5;
+      break;
+    default:
+      overheadPercent = 0;
+      usableCapacityTB = rawCapacityTB;
+  }
+  
+  return {
+    rawCapacityTB,
+    usableCapacityTB,
+    overheadPercent,
+    overheadTB: rawCapacityTB - usableCapacityTB
+  };
+}
+
+// Calculate usable capacity from raw capacity and RAID type
+export function calculateUsableCapacity(
+  rawCapacityTB: number,
+  raidType: 'RAID-1' | 'RAID-5' | 'RAID-6' | 'RAID-Z1' | 'RAID-Z2',
+  totalHDDs: number = 6
+): number {
+  const raidCalc = calculateRAIDOverhead(raidType, totalHDDs, rawCapacityTB / totalHDDs);
+  return raidCalc.usableCapacityTB;
+}
+
+// Enhanced storage calculation with all new features
 export function calculateAccurateStorage(input: {
   cameras: number;
   resolution: string;
@@ -40,6 +105,12 @@ export function calculateAccurateStorage(input: {
   recordingHoursPerDay: number;
   activityPercent: number;
   retentionDays: number;
+  // New optional parameters
+  customBitrate?: number;
+  customFps?: number;
+  preRecordSeconds?: number;
+  postRecordSeconds?: number;
+  recordingMode?: string;
 }): {
   bitratePerCamera: number;
   dailyStoragePerCameraGB: number;
@@ -47,9 +118,32 @@ export function calculateAccurateStorage(input: {
   totalBitrateMbps: number;
   adjustedBitrate: number;
   overhead: number;
+  adjustedMotionPercent?: number;
 } {
-  // Step 1: Get base bitrate from industry standards table
-  const baseBitrate = BASE_BITRATE_TABLE[input.resolution]?.[input.fps]?.[input.quality] || 4.0;
+  // Step 1: Determine base bitrate
+  let baseBitrate: number;
+  
+  // Priority 1: Use custom bitrate from slider if explicitly provided
+  if (input.customBitrate !== undefined && input.customBitrate > 0) {
+    baseBitrate = input.customBitrate;
+  } else {
+    // Priority 2: Use quality lookup table
+    // If custom FPS is provided, scale from 30 FPS base
+    let lookupFps = input.fps;
+    if (input.customFps && input.customFps > 0) {
+      lookupFps = 30; // Use 30 FPS as base for scaling
+    }
+    
+    baseBitrate = BASE_BITRATE_TABLE[input.resolution]?.[lookupFps]?.[input.quality] || 4.0;
+    
+    // Apply FPS scaling if custom FPS is provided
+    if (input.customFps && input.customFps > 0) {
+      baseBitrate = baseBitrate * (input.customFps / 30);
+    } else if (input.fps !== 30) {
+      // Scale based on actual FPS vs 30 FPS
+      baseBitrate = baseBitrate * (input.fps / 30);
+    }
+  }
   
   // Step 2: Apply compression adjustment
   const compressionFactor = {
@@ -61,21 +155,39 @@ export function calculateAccurateStorage(input: {
   
   const adjustedBitrate = baseBitrate * compressionFactor;
   
-  // Step 3: Calculate daily storage per camera (MB)
+  // Step 3: Handle motion-triggered recording
+  let adjustedMotionPercent = input.activityPercent;
+  if (input.recordingMode === 'motion' && input.preRecordSeconds !== undefined && input.postRecordSeconds !== undefined) {
+    // Calculate effective recording percentage
+    // Pre-record and post-record times extend the recording duration
+    // Assume average motion event duration of 10 seconds
+    const avgMotionEventDuration = 10;
+    const preRecord = input.preRecordSeconds || 2;
+    const postRecord = input.postRecordSeconds || 5;
+    const totalRecordTime = preRecord + avgMotionEventDuration + postRecord;
+    
+    // Calculate effective percentage: activity% * (total record time / motion event duration)
+    // This accounts for the extended recording time due to pre/post-record
+    const timeMultiplier = totalRecordTime / avgMotionEventDuration;
+    const effectivePercent = Math.min(100, input.activityPercent * timeMultiplier);
+    adjustedMotionPercent = effectivePercent;
+  }
+  
+  // Step 4: Calculate daily storage per camera (MB)
   // Daily = (bitrate × 3600 × recording_hours) / 8
   const dailyStorageMB = (adjustedBitrate * 3600 * input.recordingHoursPerDay) / 8;
   
-  // Step 4: Apply activity ratio
-  const activityRatio = input.activityPercent / 100;
+  // Step 5: Apply activity ratio (adjusted for motion recording)
+  const activityRatio = adjustedMotionPercent / 100;
   const dailyWithActivity = dailyStorageMB * activityRatio;
   
-  // Step 5: Calculate per camera for retention period
+  // Step 6: Calculate per camera for retention period
   const storagePerCameraMB = dailyWithActivity * input.retentionDays;
   
-  // Step 6: Multiply by camera count
+  // Step 7: Multiply by camera count
   const totalStorageMB = storagePerCameraMB * input.cameras;
   
-  // Step 7: Convert to TB and add 20% overhead
+  // Step 8: Convert to TB and add 20% overhead
   const totalStorageTB = (totalStorageMB / 1_000_000) * 1.2;
   
   return {
@@ -84,6 +196,7 @@ export function calculateAccurateStorage(input: {
     totalStorageTB: totalStorageTB,
     totalBitrateMbps: adjustedBitrate * input.cameras,
     adjustedBitrate: adjustedBitrate,
-    overhead: 1.2
+    overhead: 1.2,
+    adjustedMotionPercent: input.recordingMode === 'motion' ? adjustedMotionPercent : undefined
   };
 }

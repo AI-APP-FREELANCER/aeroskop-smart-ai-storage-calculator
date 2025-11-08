@@ -5,40 +5,8 @@ import { query } from '@/lib/db';
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-// Allowed topics for camera storage discussions (expanded)
-const ALLOWED_TOPICS = [
-  'storage', 'camera', 'cameras', 'bitrate', 'frame', 'recording', 'vms', 
-  'optimization', 'surveillance', 'video', 'compression', 'retention', 
-  'fps', 'resolution', 'codec', 'h264', 'h265', 'mjpeg', 'quality',
-  'capacity', 'hardware', 'nvr', 'server', 'raid', 'ssd', 'hdd',
-  'network', 'bandwidth', 'analytics', 'ai', 'recommendation',
-  'calculate', 'calculation', 'need', 'help', 'how', 'what', 'why',
-  'compare', 'difference', 'better', 'best', 'recommend', 'suggest',
-  'system', 'setup', 'install', 'deploy', 'configure', 'settings',
-  'performance', 'speed', 'fast', 'slow', 'efficient', 'optimize',
-  'cost', 'price', 'budget', 'expensive', 'cheap', 'affordable',
-  'security', 'safe', 'secure', 'protection', 'monitor', 'watch'
-];
-
-// Restriction prompt for Gemini
-const RESTRICTION_PROMPT = `
-You are a friendly AI assistant specializing in surveillance camera storage advice and optimization.
-
-Focus on providing helpful guidance about:
-- Storage optimization tips and best practices
-- Product recommendations and comparisons
-- Cost-saving strategies for surveillance storage
-- System setup and configuration advice
-- Troubleshooting common storage issues
-- Hardware selection guidance
-- Network considerations for surveillance systems
-- Security best practices
-
-Keep responses conversational and practical. Avoid showing detailed calculations or technical formulas - instead focus on actionable advice and recommendations. Be encouraging and helpful.
-
-If someone asks about completely unrelated topics (like cooking, weather, etc.), politely redirect them to surveillance and storage topics.
-
-User query: `;
+// Simplified system prompt - keep it short to avoid API errors
+const SYSTEM_PROMPT = `You are an expert surveillance storage assistant. Answer questions directly using the conversation context and any calculation results provided. Be conversational and helpful.`;
 
 export async function GET() {
   return NextResponse.json({
@@ -76,92 +44,314 @@ export async function POST(request: NextRequest) {
 
     // Check if Gemini API key is configured
     if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_gemini_api_key_here') {
-      console.log('🔧 Gemini API key not configured, using intelligent fallback response');
-      const fallbackResponse = generateFallbackResponse(prompt);
+      console.log('🔧 Gemini API key not configured, using simple fallback response');
       return NextResponse.json({
-        response: fallbackResponse,
+        response: 'I apologize, but the AI service is currently unavailable. Please check your API configuration or try again later.',
         isRestricted: false,
         timestamp: new Date().toISOString(),
         isFallback: true
       });
     }
 
-    // Client-side topic validation - only restrict if clearly off-topic
-    const userInput = prompt.toLowerCase();
-    const isAllowedTopic = ALLOWED_TOPICS.some(topic => 
-      userInput.includes(topic.toLowerCase())
-    );
+    // Fetch conversation history from database
+    let conversationHistory: Array<{ role: 'user' | 'model'; parts: string }> = [];
+    let calculationContextMessage: string | null = null;
+    
+    if (sessionId) {
+      try {
+        // Fetch chat history for this session
+        const historyResult = await query(
+          `SELECT sender, message, created_at 
+           FROM chat_messages 
+           WHERE session_id = $1 
+           ORDER BY created_at ASC 
+           LIMIT 20`,
+          [sessionId]
+        );
 
-    // Only restrict if the query is clearly unrelated to surveillance/storage
-    const offTopicKeywords = ['weather', 'cooking', 'sports', 'politics', 'entertainment', 'music', 'movies', 'games', 'shopping', 'travel', 'food', 'restaurant'];
-    const isOffTopic = offTopicKeywords.some(keyword => userInput.includes(keyword));
+        // Convert database messages to Gemini chat history format
+        conversationHistory = historyResult.rows.map((row: any) => ({
+          role: row.sender === 'user' ? 'user' : 'model',
+          parts: row.message
+        }));
 
-    // Very minimal restriction - only block completely unrelated topics
-    if (isOffTopic && !isAllowedTopic && userInput.length < 15) {
-      // Only restrict very short, clearly off-topic queries
-      return NextResponse.json({
-        response: "I'm here to help with surveillance and storage topics! Feel free to ask about cameras, storage requirements, or any technical questions.",
-        isRestricted: false
-      });
-    }
+        // Fetch recent calculation context for this session
+        // Match by sessionId in result_id or fetch most recent for this session
+        const contextResult = await query(
+          `SELECT summary, params, product_mapping, timestamp, result_id
+           FROM calculation_contexts 
+           WHERE result_id LIKE $1 OR result_id LIKE $2
+           ORDER BY timestamp DESC 
+           LIMIT 1`,
+          [`%${sessionId}%`, `result-%`]
+        );
 
-    // Check if Gemini API key is configured
-    if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_gemini_api_key_here') {
-      console.log('🔧 Gemini API key not configured, using fallback response');
-      const fallbackResponse = generateFallbackResponse(prompt);
-      return NextResponse.json({
-        response: fallbackResponse,
-        isRestricted: false,
-        timestamp: new Date().toISOString(),
-        isFallback: true
-      });
+        if (contextResult.rows.length > 0) {
+          const context = contextResult.rows[0];
+          const params = typeof context.params === 'string' ? JSON.parse(context.params) : context.params;
+          const productMapping = typeof context.product_mapping === 'string' ? JSON.parse(context.product_mapping) : context.product_mapping;
+          
+          // Build calculation context as a synthetic user message (not in system_instruction)
+          // This avoids the 400 error from system_instruction being too long
+          calculationContextMessage = `[User's Current Calculation Results]\n\n${context.summary || ''}\n\nWhen I ask about "this system", "the recommended product", "my calculation", or "the storage", I'm referring to these specific results. Please use these exact values in your answers.`;
+          
+          // Sanitize the context message - remove excessive newlines and control characters
+          calculationContextMessage = calculationContextMessage
+            .replace(/\n{3,}/g, '\n\n') // Replace 3+ newlines with 2
+            .replace(/[\x00-\x1F\x7F-\x9F]/g, '') // Remove control characters
+            .trim();
+          
+          console.log(`📊 Loaded calculation context for session ${sessionId}:`, {
+            summary: context.summary?.substring(0, 100) + '...',
+            product: productMapping?.sku,
+            contextLength: calculationContextMessage.length
+          });
+        } else {
+          console.log(`⚠️ No calculation context found for session ${sessionId}`);
+        }
+
+        console.log(`📚 Loaded ${conversationHistory.length} previous messages for context`);
+      } catch (dbError: any) {
+        console.warn('⚠️ Could not fetch conversation history:', dbError.message);
+        // Continue without history if database query fails
+      }
     }
 
     // Get Gemini model
-    console.log('🤖 Initializing Gemini model...');
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Using gemini-2.5-flash as it's available for v1beta API
+    // gemini-pro and gemini-1.5-flash were returning 404 Not Found for v1beta API
+    console.log('🤖 Initializing Gemini model with chat history...');
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    // Create the full prompt with restrictions
-    const fullPrompt = RESTRICTION_PROMPT + prompt;
-    console.log('📝 Sending prompt to Gemini...');
+    // Build the chat with history
+    // IMPORTANT: Remove system_instruction entirely to avoid 400 errors
+    // Instead, add system instructions as the first user message in history
+    let historyForGemini: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
+    
+    // Add system instructions as first user message (if no history exists)
+    if (conversationHistory.length === 0) {
+      historyForGemini.push({
+        role: 'user',
+        parts: [{ text: SYSTEM_PROMPT }]
+      });
+      // Add a model acknowledgment
+      historyForGemini.push({
+        role: 'model',
+        parts: [{ text: 'I understand. I am an expert surveillance storage assistant ready to help.' }]
+      });
+    }
+    
+    // Add calculation context as next message if available
+    if (calculationContextMessage) {
+      historyForGemini.push({
+        role: 'user',
+        parts: [{ text: calculationContextMessage }]
+      });
+      // Add a model acknowledgment to maintain conversation flow
+      historyForGemini.push({
+        role: 'model',
+        parts: [{ text: 'I understand. I have your calculation results and will use them when answering your questions.' }]
+      });
+    }
+    
+    // Add existing conversation history
+    const existingHistory = conversationHistory.map(msg => ({
+      role: msg.role,
+      parts: [{ text: msg.parts }]
+    }));
+    historyForGemini = [...historyForGemini, ...existingHistory];
+    
+    let chat;
+    if (historyForGemini.length > 0) {
+      // Start chat with history - NO system_instruction to avoid 400 errors
+      chat = model.startChat({
+        history: historyForGemini
+      });
+    } else {
+      // Start new chat without system_instruction
+      chat = model.startChat();
+    }
+
+    // Store user message in database
+    if (sessionId) {
+      try {
+        await query(
+          `INSERT INTO chat_messages (session_id, sender, message, metadata, created_at) 
+           VALUES ($1, $2, $3, $4, $5)`,
+          [
+            sessionId,
+            'user',
+            prompt,
+            JSON.stringify({ pageUrl: pageUrl || 'unknown' }),
+            new Date().toISOString()
+          ]
+        );
+      } catch (dbError: any) {
+        console.warn('⚠️ Could not store user message:', dbError.message);
+      }
+    }
+
+    console.log('📝 Sending prompt to Gemini with context...');
     console.log('🔑 Gemini API Key configured:', !!process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here');
+    console.log('📤 Full request payload:', {
+      prompt: prompt.substring(0, 200) + (prompt.length > 200 ? '...' : ''),
+      sessionId: sessionId,
+      conversationHistoryLength: conversationHistory.length,
+      hasCalculationContext: !!calculationContextMessage,
+      calculationContextLength: calculationContextMessage?.length || 0,
+      totalHistoryLength: historyForGemini.length,
+      usingSystemInstruction: false, // Removed to avoid 400 errors
+      systemPromptInHistory: conversationHistory.length === 0 // System prompt is in history if no previous messages
+    });
 
-    // Generate response from Gemini
+    // Generate response from Gemini using chat
     try {
-      const result = await model.generateContent(fullPrompt);
+      console.log('🔄 Calling Gemini API sendMessage...');
+      console.log('📝 Prompt being sent:', prompt.substring(0, 100) + '...');
+      console.log('🔑 API Key check:', {
+        hasKey: !!process.env.GEMINI_API_KEY,
+        keyLength: process.env.GEMINI_API_KEY?.length || 0,
+        keyPrefix: process.env.GEMINI_API_KEY?.substring(0, 10) + '...' || 'N/A'
+      });
+      
+      const result = await chat.sendMessage(prompt);
+      console.log('✅ Gemini sendMessage completed, getting response...');
+      
       const response = await result.response;
-      const text = response.text();
-      console.log('✅ Gemini response received:', text.substring(0, 100) + '...');
-      console.log('🤖 This is a REAL Gemini response, not hardcoded!');
+      console.log('✅ Gemini response object received:', {
+        responseType: typeof response,
+        hasText: typeof response.text === 'function',
+        responseKeys: Object.keys(response),
+        responseString: JSON.stringify(response).substring(0, 200)
+      });
+      
+      let text: string;
+      try {
+        text = response.text();
+      } catch (textError: any) {
+        console.error('❌ Error extracting text from response:', {
+          error: textError?.message,
+          errorType: textError?.constructor?.name,
+          response: JSON.stringify(response).substring(0, 500)
+        });
+        throw new Error(`Failed to extract text from Gemini response: ${textError?.message}`);
+      }
+      
+      console.log('✅ Gemini text extracted:', {
+        textLength: text?.length || 0,
+        textPreview: text?.substring(0, 200) + (text?.length > 200 ? '...' : ''),
+        isEmpty: !text || text.trim().length === 0
+      });
+      
+      if (!text || text.trim().length === 0) {
+        console.error('❌ Gemini returned empty text response');
+        throw new Error('Gemini API returned an empty response');
+      }
+      
+      console.log('🤖 This is a REAL Gemini response with conversation context!');
       console.log('📊 Full response length:', text.length);
       
-      return NextResponse.json({
+      // Store AI response in database
+      if (sessionId) {
+        try {
+          await query(
+            `INSERT INTO chat_messages (session_id, sender, message, metadata, created_at) 
+             VALUES ($1, $2, $3, $4, $5)`,
+            [
+              sessionId,
+              'ai',
+              text,
+              JSON.stringify({ pageUrl: pageUrl || 'unknown', isFallback: false }),
+              new Date().toISOString()
+            ]
+          );
+        } catch (dbError: any) {
+          console.warn('⚠️ Could not store AI message:', dbError.message);
+        }
+      }
+      
+      const responsePayload = {
         response: text,
         isRestricted: false,
         timestamp: new Date().toISOString(),
         isFallback: false
+      };
+      
+      console.log('📤 Sending response to frontend:', {
+        responseLength: text.length,
+        hasResponse: !!responsePayload.response,
+        isFallback: responsePayload.isFallback
       });
+      
+      return NextResponse.json(responsePayload);
     } catch (error: any) {
-      console.error('❌ Gemini API Error:', error);
-      console.log('🔄 Falling back to intelligent response');
-      const fallbackResponse = generateFallbackResponse(prompt);
+      console.error('❌ Gemini API Error Details:', {
+        errorType: error?.constructor?.name,
+        errorMessage: error?.message,
+        errorStack: error?.stack?.substring(0, 1000),
+        errorCode: error?.code,
+        errorStatus: error?.status,
+        errorName: error?.name,
+        fullError: JSON.stringify(error, Object.getOwnPropertyNames(error)).substring(0, 1000)
+      });
+      
+      // Check for specific error types
+      const isApiKeyError = error?.message?.includes('API_KEY') || error?.message?.includes('api key') || error?.code === 401 || error?.status === 401;
+      const isRateLimitError = error?.message?.includes('rate limit') || error?.message?.includes('quota') || error?.code === 429 || error?.status === 429;
+      const isNetworkError = error?.message?.includes('network') || error?.message?.includes('fetch') || error?.code === 'ECONNREFUSED';
+      
+      let errorMessage = 'An issue occurred while fetching recommendations from the AI system. Please try again or report this inconsistency to our support team.';
+      
+      if (isApiKeyError) {
+        errorMessage = 'The AI service is currently unavailable due to API configuration issues. Please contact support.';
+        console.error('🔑 API Key Error detected');
+      } else if (isRateLimitError) {
+        errorMessage = 'The AI service is temporarily unavailable due to high demand. Please try again in a few moments.';
+        console.error('⏱️ Rate Limit Error detected');
+      } else if (isNetworkError) {
+        errorMessage = 'Unable to connect to the AI service. Please check your internet connection and try again.';
+        console.error('🌐 Network Error detected');
+      }
+      
+      // Store error message in database
+      if (sessionId) {
+        try {
+          await query(
+            `INSERT INTO chat_messages (session_id, sender, message, metadata, created_at) 
+             VALUES ($1, $2, $3, $4, $5)`,
+            [
+              sessionId,
+              'ai',
+              errorMessage,
+              JSON.stringify({ 
+                pageUrl: pageUrl || 'unknown', 
+                error: error.message, 
+                errorType: error?.constructor?.name,
+                errorCode: error?.code,
+                isFallback: true 
+              }),
+              new Date().toISOString()
+            ]
+          );
+        } catch (dbError: any) {
+          console.warn('⚠️ Could not store error message:', dbError.message);
+        }
+      }
+      
       return NextResponse.json({
-        response: fallbackResponse,
+        response: errorMessage,
         isRestricted: false,
         timestamp: new Date().toISOString(),
-        isFallback: true
+        isFallback: true,
+        error: error?.message || 'Unknown error'
       });
     }
 
   } catch (error: any) {
     console.error('Gemini API Error:', error);
-    console.log('🔄 Falling back to intelligent response');
-    
-    // Provide intelligent fallback response immediately
-    const fallbackResponse = generateFallbackResponse(body?.prompt || 'storage question');
     
     return NextResponse.json({
-      response: fallbackResponse,
+      response: 'An issue occurred while fetching recommendations from the AI system. Please try again or report this inconsistency to our support team.',
       isRestricted: false,
       timestamp: new Date().toISOString(),
       isFallback: true
@@ -169,110 +359,4 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function generateFallbackResponse(prompt: string): string {
-  const userInput = prompt.toLowerCase();
-  
-  // Storage advice responses
-  if (userInput.includes('storage') && userInput.includes('need')) {
-    return `I'd be happy to help you figure out your storage needs! 
-
-Here's what I consider when recommending storage solutions:
-• How many cameras you're planning to deploy
-• The video quality you need (HD, 4K, etc.)
-• How long you want to keep recordings
-• Whether you're recording 24/7 or just when motion is detected
-
-💡 **Pro Tip:** H.265 compression can cut your storage needs in half compared to older formats!
-
-What's your surveillance setup looking like? I can give you some personalized recommendations!`;
-  }
-  
-  // H.264 vs H.265 comparison
-  if (userInput.includes('h.264') || userInput.includes('h.265') || userInput.includes('compression')) {
-    return `Great question about video compression! Here's the simple breakdown:
-
-**H.264 (The Classic):**
-• Works with almost everything
-• Takes up more storage space
-• Perfect for older systems
-• Still widely used
-
-**H.265 (The Modern Choice):**
-• Cuts your storage needs in half! 🎉
-• Better for 4K and high-resolution cameras
-• Requires newer equipment
-• Worth the upgrade for new installations
-
-**My Recommendation:** If you're setting up a new system, definitely go with H.265. You'll save tons of storage space and get better video quality. For existing systems, H.264 works perfectly fine!
-
-Need help choosing the right compression for your setup?`;
-  }
-  
-  // Bitrate questions
-  if (userInput.includes('bitrate') || userInput.includes('bandwidth')) {
-    return `Great question about network requirements! Here's what you need to know:
-
-**Typical Bandwidth Needs:**
-• HD cameras: About 2-4 Mbps each
-• 4K cameras: Around 8-12 Mbps each
-• The more cameras, the more bandwidth you'll need
-
-**Smart Tips:**
-• H.265 compression cuts bandwidth in half! 🎯
-• Plan for some extra capacity (about 20% more)
-• Use good quality network switches
-• PoE+ switches are perfect for power and data
-
-**Pro Advice:** Start with a gigabit network - it's affordable and gives you room to grow. Most modern cameras work great with this setup!
-
-What kind of cameras are you planning to use?`;
-  }
-  
-  // General storage optimization
-  if (userInput.includes('optimize') || userInput.includes('optimization')) {
-    return `I love helping with storage optimization! Here are my top tips:
-
-**Easy Wins:**
-• Switch to H.265 compression - instant 50% storage savings! 🎉
-• Use motion detection instead of 24/7 recording
-• Set up smart recording schedules (business hours, etc.)
-
-**Smart Storage Setup:**
-• Use RAID for data protection
-• Consider a mix of fast and economical drives
-• Set up automatic cleanup of old footage
-
-**Pro Tips:**
-• Regular system maintenance keeps everything running smoothly
-• Keep your firmware updated for best performance
-• Plan for growth - storage needs always increase!
-
-What's your current setup like? I can give you some personalized optimization suggestions!`;
-  }
-  
-  // Check if it's a storage-related question
-  const storageKeywords = ['storage', 'camera', 'bitrate', 'compression', 'h.264', 'h.265', 'fps', 'resolution', 'recording', 'retention', 'surveillance', 'vms', 'nvr', 'server'];
-  const isStorageRelated = storageKeywords.some(keyword => userInput.includes(keyword));
-
-  if (!isStorageRelated) {
-    return `I'm specialized in surveillance and storage topics! I'd love to help you with camera storage, system optimization, or any surveillance-related questions. What can I help you with today?`;
-  }
-
-  // Default response for storage-related questions
-  return `I'm here to help with your surveillance storage needs! 
-
-**I can help you with:**
-• Finding the right storage solution for your cameras
-• Optimizing your current setup for better performance
-• Choosing the best compression settings
-• Planning for future growth
-• Troubleshooting storage issues
-
-**Just ask me things like:**
-• "What's the best storage setup for my cameras?"
-• "How can I save space on my surveillance recordings?"
-• "What's the difference between H.264 and H.265?"
-• "How do I plan storage for a new installation?"
-
-What would you like to know about your surveillance storage?`;
-}
+// Removed generateFallbackResponse - using Gemini's natural responses instead

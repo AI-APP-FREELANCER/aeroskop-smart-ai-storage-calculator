@@ -1,0 +1,110 @@
+SLIDE 1: Gemini AI Integration for Storage Calculations
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Technical: Google Gemini AI integrated directly into storage recommendation engine
+Formulas: bitrate = base × (FPS/30) × activity × recording
+Compression: H.265 (0.6x), H.264 (1.0x), MJPEG (4.0x)
+Dynamic product matching algorithm
+
+Features: Real-time calculations, intelligent recommendations, optimization suggestions
+Benefits: 40% cost savings, expert precision, instant recommendations
+
+Visual: Gemini AI logo, calculation formulas, flow diagram
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SLIDE 2: Technical Storage Calculation Engine
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Technical:
+• Bitrate tables: 720p, 1080p, 4K, 8K resolutions
+• Activity multipliers: Low (0.3), Medium (0.6), High (1.0)
+• Recording modes: Continuous (1.0), Motion-based (0.3)
+• 20% overhead factor, RAID capacity considerations
+
+Features:
+• Dynamic selection: NVR (<100 cameras), Servers (100-400), SDS (>400)
+• 6+ product catalog: AeroFlex NVR, Rhino Servers, AeroStor SDS
+
+Benefits: Accurate storage estimates, scalability matching, optimization
+
+Visual: Calculation formulas, product matching flowchart, bitrate tables
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SLIDE 3: Unified Calculator + Gemini AI Chat
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Features:
+• Combined storage calculator with Gemini AI chat
+• Parameter tracking: cameras, resolution, FPS, codec, activity, retention
+• Result history comparison, mobile-responsive design
+
+Technical:
+• Next.js 14+ (React), TypeScript
+• PostgreSQL / AWS RDS database
+• RESTful API architecture, session management
+
+Benefits: Seamless workflow, instant AI assistance, professional UI
+
+Visual: Calculator interface screenshot, chat interface, unified workflow diagram
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SLIDE 4: Analytics & Business Intelligence Platform
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Technical:
+• Real-time user tracking (sessions, parameters, interactions)
+• Admin analytics dashboard
+• PostgreSQL optimized queries, click stream analysis
+
+Features:
+• Parameter preference analysis
+• Conversion tracking, usage statistics
+• ROI measurement tools
+
+Benefits: Market insights, product optimization data, behavior patterns
+
+Visual: Analytics dashboard, user journey maps, metrics graphs
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SLIDE 5: Professional Tools & Enterprise Features
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Features:
+• PDF generation (jsPDF), email/WhatsApp sharing
+• Consultation booking integration
+• 8+ product catalog, detailed recommendation modal
+
+Technical:
+• RESTful API endpoints
+• Database caching, graceful fallback mechanisms
+• Comprehensive error handling
+
+Benefits: Professional documentation, shareable reports, enterprise-ready
+
+Visual: PDF preview, sharing interface, product catalog examples
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SLIDE 6: Technology Stack & Proven Results
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Technology Stack:
+• Next.js 14+ (React), TypeScript
+• PostgreSQL / AWS RDS database
+• Dual AI: Gemini AI (primary) + GPT-4 (fallback)
+• Scalable architecture
+
+Proven Success:
+✓ 40% storage cost reduction (case study)
+✓ 99.9% uptime capability
+✓ Deployed and operational
+✓ Dynamic recommendations system
+
+Competitive Edge:
+• Gemini AI-first approach
+• Comprehensive analytics platform
+• Professional reporting tools
+• Specialized storage domain expertise
+
+Visual: Tech logos (Next.js/PostgreSQL/AWS/Gemini), architecture diagram, metrics charts
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+

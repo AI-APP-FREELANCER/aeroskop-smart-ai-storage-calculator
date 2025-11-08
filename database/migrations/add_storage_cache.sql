@@ -34,7 +34,7 @@ CREATE INDEX IF NOT EXISTS idx_cache_usage ON storage_recommendations_cache(usag
 CREATE INDEX IF NOT EXISTS idx_cache_created_at ON storage_recommendations_cache(created_at DESC);
 
 -- Add comments for documentation
-COMMENT ON TABLE storage_recommendations_cache IS 'Cache table for AI-generated storage recommendations to avoid duplicate OpenAI API calls';
+COMMENT ON TABLE storage_recommendations_cache IS 'Cache table for AI-generated storage recommendations to avoid duplicate Gemini API calls';
 COMMENT ON COLUMN storage_recommendations_cache.input_hash IS 'MD5 hash of input parameters for fast cache lookup';
 COMMENT ON COLUMN storage_recommendations_cache.usage_count IS 'Number of times this cached recommendation has been accessed';
 COMMENT ON COLUMN storage_recommendations_cache.recommended_product_good IS 'JSON data for the Good tier recommendation';

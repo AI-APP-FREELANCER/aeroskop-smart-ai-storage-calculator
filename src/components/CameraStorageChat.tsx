@@ -24,7 +24,7 @@ export default function CameraStorageChat({
     {
       id: '1',
       sender: 'ai',
-      text: 'Hello! I\'m your specialized AI assistant for camera storage and surveillance system optimization. I can help you with storage calculations, bitrate calculations, VMS optimization, and surveillance hardware recommendations. What would you like to know?',
+      text: 'Hello! I\'m your AI assistant specializing in surveillance camera systems, storage solutions, and related technical topics. I can help you with storage calculations, system recommendations, technical questions, and more. What would you like to know?',
       timestamp: new Date()
     }
   ]);
@@ -38,45 +38,10 @@ export default function CameraStorageChat({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Client-side topic validation
-  const validateTopic = (input: string): boolean => {
-    const allowedTopics = [
-      'storage', 'camera', 'cameras', 'bitrate', 'frame', 'recording', 'vms', 
-      'optimization', 'surveillance', 'video', 'compression', 'retention', 
-      'fps', 'resolution', 'codec', 'h264', 'h265', 'mjpeg', 'quality',
-      'capacity', 'hardware', 'nvr', 'server', 'raid', 'ssd', 'hdd',
-      'network', 'bandwidth', 'analytics', 'ai', 'recommendation'
-    ];
-
-    const inputLower = input.toLowerCase();
-    return allowedTopics.some(topic => inputLower.includes(topic));
-  };
-
   const sendMessage = async () => {
     if (!userInput.trim() || loading) return;
 
     const trimmedInput = userInput.trim();
-    
-    // Client-side validation
-    if (!validateTopic(trimmedInput)) {
-      const restrictedMessage: Message = {
-        id: Date.now().toString(),
-        sender: 'ai',
-        text: 'I can only assist with camera storage and surveillance system optimization topics. Please ask about storage requirements, bitrate calculations, or VMS optimization.',
-        timestamp: new Date(),
-        isRestricted: true
-      };
-      
-      setMessages(prev => [...prev, {
-        id: (Date.now() - 1).toString(),
-        sender: 'user',
-        text: trimmedInput,
-        timestamp: new Date()
-      }, restrictedMessage]);
-      
-      setUserInput('');
-      return;
-    }
 
     // Add user message
     const userMessage: Message = {
@@ -158,7 +123,7 @@ export default function CameraStorageChat({
       {
         id: '1',
         sender: 'ai',
-        text: 'Hello! I\'m your specialized AI assistant for camera storage and surveillance system optimization. I can help you with storage calculations, bitrate calculations, VMS optimization, and surveillance hardware recommendations. What would you like to know?',
+        text: 'Hello! I\'m your AI assistant specializing in surveillance camera systems, storage solutions, and related technical topics. I can help you with storage calculations, system recommendations, technical questions, and more. What would you like to know?',
         timestamp: new Date()
       }
     ]);
@@ -182,7 +147,7 @@ export default function CameraStorageChat({
           </button>
         </div>
         <p className="text-blue-100 text-sm mt-1">
-          Specialized in surveillance storage optimization and VMS recommendations
+          Ask me anything about surveillance systems, storage, or related topics
         </p>
       </div>
 
@@ -256,7 +221,7 @@ export default function CameraStorageChat({
             value={userInput}
             onChange={(e) => setUserInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Ask about camera storage, bitrate calculations, or VMS optimization..."
+            placeholder="Ask me anything about surveillance systems, storage, or related topics..."
             className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
             disabled={loading}
           />
@@ -272,7 +237,7 @@ export default function CameraStorageChat({
         
         {/* Topic hints */}
         <div className="mt-2 text-xs text-gray-500">
-          <p>💡 Try asking about: storage calculations, bitrate optimization, VMS recommendations, or surveillance hardware</p>
+          <p>💡 I can help with storage calculations, system recommendations, technical questions, and more!</p>
         </div>
       </div>
     </div>

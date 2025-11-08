@@ -20,13 +20,7 @@ This document provides step-by-step instructions to set up Google Gemini AI inte
 Create or update your `.env.local` file in the project root with the following variables:
 
 ```env
-# OpenAI Configuration (existing)
-OPENAI_API_KEY=your_openai_api_key_here
-OPENAI_MODEL=gpt-4-turbo-preview
-OPENAI_MAX_TOKENS=2500
-OPENAI_TEMPERATURE=0.2
-
-# Google Gemini AI Configuration (NEW)
+# Google Gemini AI Configuration
 GEMINI_API_KEY=your_gemini_api_key_here
 GEMINI_MODEL=gemini-1.5-flash
 

@@ -236,3 +236,53 @@ export interface StorageCalculations {
   adjusted_bitrate: number;      // NEW
   overhead_factor: number;       // NEW
 }
+
+// Calculator Form Interface
+export interface CalculatorForm {
+  cameras: number | '';
+  resolution: string;
+  fps: number;
+  codec: string;
+  quality: string;
+  activityPercent: number;
+  recordingHoursPerDay: number;
+  retentionDays: number;
+  recordingMode: string;
+  // New fields for enhancements
+  customFps?: number;
+  customBitrate?: number;
+  numberOfServers?: number;
+  raidType?: 'RAID-1' | 'RAID-5' | 'RAID-6' | 'RAID-Z1' | 'RAID-Z2';
+  hddPerServer?: number;
+  driveCapacityTB?: number;
+  serverModel?: string;
+  preRecordSeconds?: number;
+  postRecordSeconds?: number;
+}
+
+// Enhanced Calculation Result
+export interface EnhancedStorageCalculation {
+  bitratePerCamera: number;
+  dailyStoragePerCameraGB: number;
+  totalStorageTB: number;
+  totalBitrateMbps: number;
+  adjustedBitrate: number;
+  overhead: number;
+  usableStorageTB?: number;
+  rawCapacityTB?: number;
+  raidOverhead?: number;
+  adjustedMotionPercent?: number;
+  serverRecommendations?: ServerRecommendation;
+}
+
+// Server Recommendation Interface
+export interface ServerRecommendation {
+  numberOfServers: number;
+  drivesPerServer: number;
+  driveType: string;
+  network: string;
+  cpu: string;
+  memory: string;
+  osFilesystem: string;
+  rationale: string[];
+}

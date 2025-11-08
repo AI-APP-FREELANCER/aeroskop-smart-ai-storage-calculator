@@ -89,7 +89,7 @@ COMMENT ON COLUMN click_streams.click_x IS 'X coordinate of the click';
 COMMENT ON COLUMN click_streams.click_y IS 'Y coordinate of the click';
 
 COMMENT ON COLUMN ai_usage_logs.tokens_used IS 'Number of tokens consumed in the AI request';
-COMMENT ON COLUMN ai_usage_logs.model_used IS 'AI model used (e.g., gpt-4-turbo-preview)';
+COMMENT ON COLUMN ai_usage_logs.model_used IS 'AI model used (e.g., gemini-1.5-flash)';
 COMMENT ON COLUMN ai_usage_logs.response_time_ms IS 'Response time in milliseconds';
 COMMENT ON COLUMN ai_usage_logs.cached IS 'Whether the response was served from cache';
 COMMENT ON COLUMN ai_usage_logs.cost_usd IS 'Cost of the AI request in USD';

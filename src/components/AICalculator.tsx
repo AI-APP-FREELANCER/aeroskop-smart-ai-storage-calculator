@@ -249,7 +249,7 @@ export default function AICalculator({ onInteraction, onAIRecommendations }: AIC
           
           // Show subtle notice if in fallback mode (don't block workflow)
           if (aiRecommendations.is_fallback) {
-            console.log('💡 Tip: Add OpenAI credits for AI-powered recommendations');
+            console.log('💡 Tip: AI recommendations are using fallback mode. Please check Gemini API configuration.');
           }
           
           // Pass to parent component
