@@ -26,7 +26,9 @@ export default function PageTracker() {
           if (response.ok) {
             const session = await response.json();
             sessionId = session.id;
-            localStorage.setItem('session_id', sessionId);
+            if (sessionId) {
+              localStorage.setItem('session_id', sessionId);
+            }
           }
         }
 

@@ -84,7 +84,7 @@ export default function QuickLinksMenu({ showCalculator = true }: QuickLinksMenu
         <div className="p-6 h-full overflow-y-auto">
           {showCalculator ? (
             <AICalculator 
-              onRecommendations={handleCalculatorSubmit}
+              onAIRecommendations={handleCalculatorSubmit}
               compact={true}
             />
           ) : (
@@ -101,6 +101,7 @@ export default function QuickLinksMenu({ showCalculator = true }: QuickLinksMenu
         <RecommendationModal
           recommendations={aiRecommendations}
           onClose={() => setShowRecommendationModal(false)}
+          isOpen={showRecommendationModal}
         />
       )}
     </>

@@ -34,6 +34,7 @@ interface CalculationResult {
 interface AICalculatorProps {
   onInteraction?: () => void;
   onAIRecommendations?: (recommendations: AIRecommendationResponse) => void;
+  compact?: boolean;
 }
 
 export default function AICalculator({ onInteraction, onAIRecommendations }: AICalculatorProps) {

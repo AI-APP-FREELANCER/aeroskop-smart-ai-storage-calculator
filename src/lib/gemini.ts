@@ -326,20 +326,23 @@ function validateAndFormatGeminiResponse(
     }
 
     // Ensure product is from Aeroskop catalog
-    const validProducts = Object.keys(PRODUCT_SPECIFICATIONS);
-    if (!validProducts.includes(aiData.recommendation.product_name)) {
+    const validProducts = Object.keys(PRODUCT_SPECIFICATIONS) as Array<keyof typeof PRODUCT_SPECIFICATIONS>;
+    if (!validProducts.includes(aiData.recommendation.product_name as keyof typeof PRODUCT_SPECIFICATIONS)) {
       // Find the best matching product based on storage requirements
-      const bestProduct = findBestProduct(storageCalc.totalStorageTB, input.cameras);
-      aiData.recommendation = {
-        ...PRODUCT_SPECIFICATIONS[bestProduct],
-        product_name: bestProduct,
-        why_recommended: `Recommended for ${input.cameras} cameras requiring ${storageCalc.totalStorageTB.toFixed(1)} TB storage`,
-        key_benefits: PRODUCT_SPECIFICATIONS[bestProduct].key_features
-      };
+      const bestProduct = findBestProduct(storageCalc.totalStorageTB, input.cameras) as keyof typeof PRODUCT_SPECIFICATIONS;
+      const productSpec = PRODUCT_SPECIFICATIONS[bestProduct];
+      if (productSpec) {
+        aiData.recommendation = {
+          ...productSpec,
+          product_name: bestProduct,
+          why_recommended: `Recommended for ${input.cameras} cameras requiring ${storageCalc.totalStorageTB.toFixed(1)} TB storage`,
+          key_benefits: productSpec.key_features
+        };
+      }
     }
 
     return {
-      parameters: input,
+      cached: false,
       calculations: {
         total_storage_tb: Number(aiData.calculations.total_storage_tb || storageCalc.totalStorageTB),
         daily_storage_tb: Number(aiData.calculations.daily_storage_tb || (storageCalc.dailyStoragePerCameraGB * input.cameras / 1000)),
@@ -415,13 +418,13 @@ function generateMockRecommendations(input: any): AIRecommendationResponse {
   console.log('📊 Storage calculation result:', storageCalc);
   console.log('💾 Total storage TB:', storageCalc.totalStorageTB);
 
-  const bestProduct = findBestProduct(storageCalc.totalStorageTB, input.cameras);
+  const bestProduct = findBestProduct(storageCalc.totalStorageTB, input.cameras) as keyof typeof PRODUCT_SPECIFICATIONS;
   const productSpecs = PRODUCT_SPECIFICATIONS[bestProduct];
   
   console.log('🏷️ Best product found:', bestProduct);
 
   return {
-    parameters: input,
+    cached: false,
     calculations: {
       total_storage_tb: storageCalc.totalStorageTB,
       daily_storage_tb: storageCalc.dailyStoragePerCameraGB * input.cameras / 1000,
@@ -435,10 +438,13 @@ function generateMockRecommendations(input: any): AIRecommendationResponse {
     recommendation: {
       product_name: bestProduct,
       product_model: productSpecs.product_model,
+      product_image_url: `/images/products/${productSpecs.product_model.toLowerCase().replace(/\s+/g, '-')}.jpg`,
       channel_capacity: productSpecs.channel_capacity,
       storage_capacity_tb: productSpecs.storage_capacity_tb,
       cpu: productSpecs.cpu,
       ram: productSpecs.ram,
+      pros: ['High performance', 'Reliable storage', 'Scalable solution'],
+      cons: ['Requires professional installation', 'Initial setup complexity'],
       raid_support: productSpecs.raid_support,
       suitable_for: productSpecs.suitable_for,
       why_recommended: `Perfect for your ${input.cameras} camera deployment requiring ${storageCalc.totalStorageTB.toFixed(1)} TB storage with ${input.retention_days} days retention`,
