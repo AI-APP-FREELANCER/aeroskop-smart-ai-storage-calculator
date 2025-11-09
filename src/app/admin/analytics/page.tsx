@@ -98,7 +98,7 @@ export default function AnalyticsPage() {
       }, {} as Record<string, number>);
 
       const usersByCompany = Object.entries(companyStats)
-        .map(([company, count]) => ({ company, count }))
+        .map(([company, count]) => ({ company, count: count as number }))
         .sort((a, b) => b.count - a.count);
 
       // Recent users
@@ -120,7 +120,7 @@ export default function AnalyticsPage() {
       const sortedSettings = Object.entries(mostCommonSettings)
         .map(([key, count]) => {
           const [resolution, fps, codec, retentionDays] = key.split('-');
-          return { resolution, fps: parseInt(fps), codec, retentionDays: parseInt(retentionDays), count };
+          return { resolution, fps: parseInt(fps), codec, retentionDays: parseInt(retentionDays), count: count as number };
         })
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
