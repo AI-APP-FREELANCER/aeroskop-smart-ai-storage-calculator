@@ -12,7 +12,7 @@ interface Product {
 }
 
 interface ProductShowcaseProps {
-  products: Product[];
+  products?: Product[];
   title?: string;
   subtitle?: string;
 }
