@@ -118,7 +118,7 @@ export default function AnalyticsPage() {
       }, {});
 
       const sortedSettings = Object.entries(mostCommonSettings)
-        .map(([key, count]) => {
+        .map(([key, count]): { resolution: string; fps: number; codec: string; retentionDays: number; count: number } => {
           const [resolution, fps, codec, retentionDays] = key.split('-');
           return { resolution, fps: parseInt(fps), codec, retentionDays: parseInt(retentionDays), count: count as number };
         })
