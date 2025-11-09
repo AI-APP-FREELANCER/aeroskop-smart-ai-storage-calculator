@@ -224,6 +224,13 @@ export interface StorageRecommendationRequest {
   recording_hours_per_day: number; // NEW: 1-24 hours
   retention_days: number;
   recording_mode: string;
+  sessionId?: string;
+  userId?: number | null;
+  session_id?: string;
+  user_id?: number | null;
+  pre_record_seconds?: number;
+  post_record_seconds?: number;
+  custom_bitrate?: number;
 }
 
 export interface StorageCalculations {

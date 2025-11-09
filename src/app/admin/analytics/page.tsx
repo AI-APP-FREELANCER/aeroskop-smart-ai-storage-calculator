@@ -16,6 +16,7 @@ interface AnalyticsData {
       fps: number;
       codec: string;
       retentionDays: number;
+      count: number;
     }[];
     averageStorage: number;
     totalStorageCalculated: number;
@@ -86,7 +87,7 @@ export default function AnalyticsPage() {
       }, {} as Record<string, number>);
 
       const usersByCountry = Object.entries(countryStats)
-        .map(([country, count]) => ({ country, count }))
+        .map(([country, count]) => ({ country, count: count as number }))
         .sort((a, b) => b.count - a.count);
 
       // Company analysis

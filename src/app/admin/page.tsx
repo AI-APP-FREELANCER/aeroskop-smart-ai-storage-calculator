@@ -45,7 +45,7 @@ export default function AdminAnalytics() {
       }, {} as Record<string, number>);
 
       const usersByCountry = Object.entries(countryStats)
-        .map(([country, count]) => ({ country, count }))
+        .map(([country, count]) => ({ country, count: count as number }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 10);
 
@@ -59,7 +59,7 @@ export default function AdminAnalytics() {
       }, {} as Record<string, number>);
 
       const topCompanies = Object.entries(companyStats)
-        .map(([company, count]) => ({ company, count }))
+        .map(([company, count]) => ({ company, count: count as number }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 10);
 

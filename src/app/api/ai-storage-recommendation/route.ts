@@ -69,7 +69,11 @@ export async function POST(request: NextRequest) {
         calculations: {
           total_storage_tb: cached.total_storage_tb,
           daily_storage_tb: cached.daily_storage_tb,
-          total_bitrate_mbps: 0, // Will be calculated from other fields
+          daily_storage_per_camera_gb: 0,
+          total_bitrate_mbps: 0,
+          bitrate_per_camera: 0,
+          adjusted_bitrate: 0,
+          overhead_factor: 0,
           retention_days: cached.retention_days
         },
         optimization: cached.optimization_suggestions,
@@ -86,7 +90,7 @@ export async function POST(request: NextRequest) {
       // Use provided calculated values if available, otherwise let AI calculate
       const aiResponse = await generateGeminiStorageRecommendation(body, {
         sessionId: body.sessionId || 'anonymous',
-        userId: body.userId || null
+        userId: body.userId ? String(body.userId) : undefined
       });
       const responseTime = Date.now() - startTime;
       
