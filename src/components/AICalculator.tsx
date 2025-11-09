@@ -145,7 +145,7 @@ export default function AICalculator({ onInteraction, onAIRecommendations }: AIC
     if (formData.codec === "H.264") {
       suggestions.push("Consider H.265 codec for 50% storage reduction");
     }
-    if (formData.recordingMode === "continuous" && formData.activityLevel === "low") {
+    if (formData.recordingMode === "continuous" && formData.activityPercent < 30) {
       suggestions.push("Motion-based recording could reduce storage by 70%");
     }
     if (formData.retentionDays > 90) {
@@ -286,7 +286,7 @@ export default function AICalculator({ onInteraction, onAIRecommendations }: AIC
               resolution: formData.resolution,
               fps: formData.fps,
               codec: formData.codec,
-              activity_level: formData.activityLevel,
+              activity_percent: formData.activityPercent,
               retention_days: formData.retentionDays,
               recording_mode: formData.recordingMode,
               total_storage_tb: storage.totalStorageTB,
