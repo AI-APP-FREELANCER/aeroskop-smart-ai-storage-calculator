@@ -102,9 +102,12 @@ export default function AICalculator({ onInteraction, onAIRecommendations }: AIC
   };
 
   const calculateStorage = () => {
+    // Validate cameras is a number
+    const cameras = typeof formData.cameras === 'number' ? formData.cameras : 1;
+    
     // Use the new accurate calculation function
     const result = calculateAccurateStorage({
-      cameras: formData.cameras,
+      cameras: cameras,
       resolution: formData.resolution,
       fps: formData.fps,
       codec: formData.codec,
@@ -116,7 +119,7 @@ export default function AICalculator({ onInteraction, onAIRecommendations }: AIC
 
     return {
       totalBitrateMbps: result.totalBitrateMbps,
-      dailyStorageTB: result.dailyStoragePerCameraGB * formData.cameras / 1000, // Convert GB to TB
+      dailyStorageTB: result.dailyStoragePerCameraGB * cameras / 1000, // Convert GB to TB
       totalStorageTB: result.totalStorageTB,
       dailyStoragePerCameraGB: result.dailyStoragePerCameraGB,
       bitratePerCamera: result.bitratePerCamera,
@@ -165,7 +168,8 @@ export default function AICalculator({ onInteraction, onAIRecommendations }: AIC
     console.log('Form data:', formData);
     
     // Validate cameras field
-    if (formData.cameras === '' || formData.cameras < 1) {
+    const cameras = typeof formData.cameras === 'number' ? formData.cameras : 0;
+    if (formData.cameras === '' || cameras < 1) {
       alert('Please enter a valid number of cameras');
       return;
     }
@@ -197,8 +201,9 @@ export default function AICalculator({ onInteraction, onAIRecommendations }: AIC
       // Call AI recommendation API
       try {
         console.log('Calling AI recommendation API...');
+        const cameras = typeof formData.cameras === 'number' ? formData.cameras : 1;
         const requestBody = {
-          cameras: formData.cameras,
+          cameras: cameras,
           resolution: formData.resolution,
           fps: formData.fps,
           codec: formData.codec,
@@ -277,7 +282,7 @@ export default function AICalculator({ onInteraction, onAIRecommendations }: AIC
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               session_id: sessionId,
-              cameras: formData.cameras,
+              cameras: cameras,
               resolution: formData.resolution,
               fps: formData.fps,
               codec: formData.codec,
@@ -536,7 +541,7 @@ export default function AICalculator({ onInteraction, onAIRecommendations }: AIC
             <div>
               <h4 className="font-semibold mb-2">Input Parameters</h4>
               <ul className="text-sm space-y-1">
-                <li>Cameras: {formData.cameras}</li>
+                <li>Cameras: {typeof formData.cameras === 'number' ? formData.cameras : 0}</li>
                 <li>Resolution: {formData.resolution} @ {formData.fps} fps</li>
                 <li>Codec: {formData.codec}</li>
                 <li>Quality: {formData.quality}</li>
@@ -606,7 +611,7 @@ export default function AICalculator({ onInteraction, onAIRecommendations }: AIC
             <div className="mt-6 p-4 bg-blue-50 rounded-lg">
               <h5 className="font-semibold text-blue-900 mb-2">Final Calculation</h5>
               <p className="text-sm text-slate-700">
-                {formData.cameras} cameras × {result.dailyStoragePerCameraGB.toFixed(2)} GB/day × {formData.retentionDays} days 
+                {typeof formData.cameras === 'number' ? formData.cameras : 0} cameras × {result.dailyStoragePerCameraGB.toFixed(2)} GB/day × {formData.retentionDays} days 
                 × 1.2 overhead = <span className="font-bold text-blue-600 text-lg">
                   {result.totalStorageTB.toFixed(2)} TB
                 </span>
