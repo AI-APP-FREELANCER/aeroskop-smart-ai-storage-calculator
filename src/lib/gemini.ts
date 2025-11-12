@@ -148,8 +148,13 @@ export async function generateGeminiStorageRecommendation(input: {
 
   try {
     // Check if Gemini API key is configured and valid
-    if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_gemini_api_key_here') {
-      console.log('🔧 Gemini API key not configured, using intelligent mock recommendations');
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey || 
+        apiKey === 'your_gemini_api_key_here' || 
+        apiKey.length < 20 || 
+        !apiKey.startsWith('AIza')) {
+      console.log('🔧 Gemini API key not configured or invalid, using intelligent mock recommendations');
+      console.log('🔧 API Key length:', apiKey?.length || 0);
       requestEndTime = new Date();
       console.log('📊 Using mock recommendations - no analytics capture needed');
       return generateMockRecommendations(input);

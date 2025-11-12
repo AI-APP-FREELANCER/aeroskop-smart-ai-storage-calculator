@@ -42,9 +42,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if Gemini API key is configured
-    if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_gemini_api_key_here') {
-      console.log('🔧 Gemini API key not configured, using simple fallback response');
+    // Check if Gemini API key is configured and valid
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey || 
+        apiKey === 'your_gemini_api_key_here' || 
+        apiKey.length < 20 || 
+        !apiKey.startsWith('AIza')) {
+      console.log('🔧 Gemini API key not configured or invalid, using simple fallback response');
+      console.log('🔧 API Key length:', apiKey?.length || 0);
       return NextResponse.json({
         response: 'I apologize, but the AI service is currently unavailable. Please check your API configuration or try again later.',
         isRestricted: false,
