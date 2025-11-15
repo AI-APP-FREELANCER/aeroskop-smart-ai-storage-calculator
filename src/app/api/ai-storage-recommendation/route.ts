@@ -42,7 +42,8 @@ export async function POST(request: NextRequest) {
       recording_mode: body.recording_mode,
       pre_record_seconds: body.pre_record_seconds || 2,
       post_record_seconds: body.post_record_seconds || 5,
-      custom_bitrate: body.custom_bitrate || undefined
+      custom_bitrate: body.custom_bitrate || undefined,
+      custom_fps: body.custom_fps || undefined
     });
     
     const inputHash = createHash('md5').update(inputString).digest('hex');
@@ -63,20 +64,63 @@ export async function POST(request: NextRequest) {
         [cached.id]
       );
 
+      // Parse cached data
+      const cachedCalculations = typeof cached.storage_calculation === 'string' 
+        ? JSON.parse(cached.storage_calculation) 
+        : cached.storage_calculation;
+      
+      // Try to get top_products from cache, fallback to single recommendation
+      let topProducts = undefined;
+      if (cached.recommended_product_best && cached.recommended_product_better) {
+        try {
+          const best = typeof cached.recommended_product_best === 'string' 
+            ? JSON.parse(cached.recommended_product_best) 
+            : cached.recommended_product_best;
+          const better = typeof cached.recommended_product_better === 'string' 
+            ? JSON.parse(cached.recommended_product_better) 
+            : cached.recommended_product_better;
+          
+          // Filter out duplicates by product_name
+          const products = [better, best].filter(p => p !== null);
+          const uniqueProducts = products.filter((product, index, self) =>
+            index === self.findIndex((p) => p.product_name === product.product_name)
+          );
+          
+          // Only return 2 products if they are different
+          topProducts = uniqueProducts.length >= 2 ? uniqueProducts : (uniqueProducts.length === 1 ? uniqueProducts : undefined);
+        } catch (e) {
+          console.error('Error parsing cached products:', e);
+        }
+      }
+      
+      const primaryRecommendation = topProducts?.[0] || 
+        (typeof cached.recommended_product_better === 'string' 
+          ? JSON.parse(cached.recommended_product_better) 
+          : cached.recommended_product_better) ||
+        (typeof cached.recommended_product_good === 'string' 
+          ? JSON.parse(cached.recommended_product_good) 
+          : cached.recommended_product_good) ||
+        (typeof cached.recommended_product_best === 'string' 
+          ? JSON.parse(cached.recommended_product_best) 
+          : cached.recommended_product_best);
+
       const response: AIRecommendationResponse = {
         cached: true,
-        recommendation: cached.recommended_product_better || cached.recommended_product_good || cached.recommended_product_best, // Use the "better" recommendation as the single best choice
+        recommendation: primaryRecommendation,
+        top_products: topProducts,
         calculations: {
-          total_storage_tb: cached.total_storage_tb,
-          daily_storage_tb: cached.daily_storage_tb,
-          daily_storage_per_camera_gb: 0,
-          total_bitrate_mbps: 0,
-          bitrate_per_camera: 0,
-          adjusted_bitrate: 0,
-          overhead_factor: 0,
-          retention_days: cached.retention_days
+          total_storage_tb: cachedCalculations?.total_storage_tb || cached.total_storage_tb || 0,
+          daily_storage_tb: cachedCalculations?.daily_storage_tb || cached.daily_storage_tb || 0,
+          daily_storage_per_camera_gb: cachedCalculations?.daily_storage_per_camera_gb || 0,
+          total_bitrate_mbps: cachedCalculations?.total_bitrate_mbps || 0,
+          bitrate_per_camera: cachedCalculations?.bitrate_per_camera || 0,
+          adjusted_bitrate: cachedCalculations?.adjusted_bitrate || 0,
+          overhead_factor: cachedCalculations?.overhead_factor || 1.2,
+          retention_days: cachedCalculations?.retention_days || cached.retention_days
         },
-        optimization: cached.optimization_suggestions,
+        optimization: typeof cached.optimization_suggestions === 'string' 
+          ? JSON.parse(cached.optimization_suggestions) 
+          : cached.optimization_suggestions,
         summary: cached.ai_insights || 'Cached recommendation based on your requirements'
       };
 
@@ -87,10 +131,24 @@ export async function POST(request: NextRequest) {
     const startTime = Date.now();
     
     try {
-      // Use provided calculated values if available, otherwise let AI calculate
-      const aiResponse = await generateGeminiStorageRecommendation(body, {
-        sessionId: body.sessionId || 'anonymous',
-        userId: body.userId ? String(body.userId) : undefined
+      // Send all parameters to Gemini - it will calculate everything
+      const aiResponse = await generateGeminiStorageRecommendation({
+        cameras: body.cameras,
+        resolution: body.resolution,
+        fps: body.fps,
+        codec: body.codec,
+        quality: body.quality || 'Medium',
+        activity_percent: body.activity_percent,
+        recording_hours_per_day: body.recording_hours_per_day,
+        retention_days: body.retention_days,
+        recording_mode: body.recording_mode,
+        pre_record_seconds: body.pre_record_seconds,
+        post_record_seconds: body.post_record_seconds,
+        custom_bitrate: body.custom_bitrate,
+        custom_fps: body.custom_fps
+      }, {
+        sessionId: body.sessionId || body.session_id || 'anonymous',
+        userId: body.userId ? String(body.userId) : (body.user_id ? String(body.user_id) : undefined)
       });
       const responseTime = Date.now() - startTime;
       
@@ -98,7 +156,11 @@ export async function POST(request: NextRequest) {
       const tokensUsed = (aiResponse as any).tokens_used || 0;
       const modelUsed = (aiResponse as any).model_used || 'gemini-2.5-flash';
       
-      // Store in cache
+      // Store in cache - store top 2 products if available
+      const topProducts = aiResponse.top_products || [aiResponse.recommendation];
+      const product1 = topProducts[0] || aiResponse.recommendation;
+      const product2 = topProducts[1] || aiResponse.recommendation;
+      
       await query(
         `INSERT INTO storage_recommendations_cache (
           input_hash, cameras, resolution, fps, codec, activity_level, 
@@ -116,9 +178,9 @@ export async function POST(request: NextRequest) {
           body.activity_percent, // Use new activity_percent instead of activity_level
           body.retention_days,
           body.recording_mode,
-          JSON.stringify(aiResponse.recommendation), // Store single recommendation in good field
-          JSON.stringify(aiResponse.recommendation), // Store same recommendation in better field
-          JSON.stringify(aiResponse.recommendation), // Store same recommendation in best field
+          JSON.stringify(product1), // Store first product in good field
+          JSON.stringify(product1), // Store first product in better field (primary)
+          JSON.stringify(product2), // Store second product in best field
           JSON.stringify(aiResponse.calculations),
           JSON.stringify(aiResponse.optimization),
           aiResponse.calculations.total_storage_tb,

@@ -2,12 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { Calculator, MessageSquare, Send, Bot, User, AlertCircle, X, GitCompare, Download, FileText, FileSpreadsheet, File } from 'lucide-react';
-import { calculateAccurateStorage, calculateRAIDOverhead } from '@/lib/storageCalculations';
-import { generateServerRecommendations } from '@/lib/serverRecommendations';
+// Note: Storage calculations are now done by Gemini AI, not locally
 import { generateEnhancedPDFReport } from '@/lib/pdfGenerator';
 import { generateExcelReport } from '@/lib/excelGenerator';
 import { generateCSVReport } from '@/lib/csvGenerator';
-import { AIRecommendationResponse, CalculatorForm, EnhancedStorageCalculation, ServerRecommendation } from '@/lib/types';
+import { AIRecommendationResponse, CalculatorForm, EnhancedStorageCalculation } from '@/lib/types';
 
 interface EnhancedUnifiedAICalculatorProps {
   className?: string;
@@ -25,6 +24,8 @@ interface ChatMessage {
   };
 }
 
+import { formatStorage, formatDailyStorage, formatDailyStorageAlwaysGB } from '@/lib/storageFormatter';
+
 export default function EnhancedUnifiedAICalculator({ className = '' }: EnhancedUnifiedAICalculatorProps) {
   // Calculator states
   const [formData, setFormData] = useState<CalculatorForm>({
@@ -41,7 +42,6 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
     customFps: undefined,
     customBitrate: undefined,
     numberOfServers: undefined,
-    raidType: undefined,
     hddPerServer: undefined,
     driveCapacityTB: undefined,
     serverModel: undefined,
@@ -50,14 +50,10 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
   });
 
   const [calculationResult, setCalculationResult] = useState<EnhancedStorageCalculation | null>(null);
-  const [raidInfo, setRaidInfo] = useState<any>(null);
-  const [serverRecommendations, setServerRecommendations] = useState<ServerRecommendation | null>(null);
   const [aiRecommendations, setAiRecommendations] = useState<AIRecommendationResponse | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const [useCustomFps, setUseCustomFps] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [isGettingSystemRecommendations, setIsGettingSystemRecommendations] = useState(false);
-  const [systemRecommendationError, setSystemRecommendationError] = useState<string | null>(null);
   const [resultHistory, setResultHistory] = useState<Array<{
     id: string;
     params: CalculatorForm;
@@ -84,8 +80,43 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
   }, [calculationResult, aiRecommendations]);
 
   const handleInputChange = (field: keyof CalculatorForm, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const updated = { ...prev, [field]: value };
+      
+      // CRITICAL: Lock Recording Mode IMMEDIATELY when Motion Activity >= 90%
+      if (field === 'activityPercent') {
+        if (Number(value) >= 90) {
+          // Force to continuous immediately
+          updated.recordingMode = 'continuous';
+        }
+      }
+      
+      // Prevent changing Recording Mode if Motion Activity >= 90%
+      if (field === 'recordingMode' && Number(prev.activityPercent) >= 90) {
+        // Don't allow the change - keep it as 'continuous'
+        updated.recordingMode = 'continuous';
+      }
+      
+      return updated;
+    });
   };
+
+  // Enforce Recording Mode lock when Motion Activity >= 90%
+  // This runs immediately when activityPercent changes
+  useEffect(() => {
+    if (Number(formData.activityPercent) >= 90) {
+      // Force Recording Mode to 'continuous' immediately
+      setFormData(prev => {
+        if (prev.recordingMode !== 'continuous') {
+          return {
+            ...prev,
+            recordingMode: 'continuous'
+          };
+        }
+        return prev;
+      });
+    }
+  }, [formData.activityPercent]); // Only depend on activityPercent to avoid loops
 
   const generateParamsHash = (params: CalculatorForm): string => {
     return btoa(JSON.stringify(params)).substring(0, 16);
@@ -121,106 +152,7 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
     }
   };
 
-  // Calculate RAID overhead when RAID type is selected and system config is available
-  useEffect(() => {
-    if (formData.raidType && (formData.numberOfServers && formData.hddPerServer && formData.driveCapacityTB)) {
-      // Use manual input values if available, otherwise use server recommendations
-      const totalHDDs = (formData.numberOfServers || 1) * (formData.hddPerServer || 1);
-      const driveCapacityTB = formData.driveCapacityTB || 18;
-      
-      const raidCalc = calculateRAIDOverhead(
-        formData.raidType,
-        totalHDDs,
-        driveCapacityTB
-      );
-      setRaidInfo(raidCalc);
-    } else if (formData.raidType && serverRecommendations) {
-      // Fallback to server recommendations if manual values not set
-      const totalHDDs = serverRecommendations.numberOfServers * serverRecommendations.drivesPerServer;
-      // Extract drive capacity from drive type string or use default
-      const driveCapacityMatch = serverRecommendations.driveType.match(/(\d+)/);
-      const driveCapacityTB = driveCapacityMatch ? parseInt(driveCapacityMatch[1]) : 18;
-      
-      const raidCalc = calculateRAIDOverhead(
-        formData.raidType,
-        totalHDDs,
-        driveCapacityTB
-      );
-      setRaidInfo(raidCalc);
-    } else if (!formData.raidType) {
-      setRaidInfo(null);
-    }
-  }, [formData.raidType, formData.numberOfServers, formData.hddPerServer, formData.driveCapacityTB, serverRecommendations]);
 
-  // Handle AI System Recommendations
-  const handleGetSystemRecommendations = async () => {
-    if (!formData.cameras || Number(formData.cameras) <= 0) {
-      alert('Please enter number of cameras first and calculate initial storage requirements');
-      return;
-    }
-
-    // First calculate basic storage to get total storage TB
-    try {
-      const basicCalc = calculateAccurateStorage({
-        cameras: Number(formData.cameras),
-        resolution: formData.resolution,
-        fps: useCustomFps && formData.customFps ? formData.customFps : formData.fps,
-        codec: formData.codec,
-        quality: 'Medium', // Default quality, bitrate is now controlled by slider
-        recordingHoursPerDay: formData.recordingHoursPerDay,
-        activityPercent: formData.activityPercent,
-        retentionDays: formData.retentionDays,
-        customBitrate: formData.customBitrate || undefined,
-        customFps: useCustomFps && formData.customFps ? formData.customFps : undefined,
-        recordingMode: formData.recordingMode,
-        preRecordSeconds: formData.preRecordSeconds,
-        postRecordSeconds: formData.postRecordSeconds
-      });
-
-      setIsGettingSystemRecommendations(true);
-      setSystemRecommendationError(null);
-
-      const response = await fetch('/api/ai-system-recommendations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cameras: Number(formData.cameras),
-          totalStorageTB: basicCalc.totalStorageTB,
-          totalBitrateMbps: basicCalc.totalBitrateMbps,
-          retentionDays: formData.retentionDays,
-          resolution: formData.resolution,
-          sessionId
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || errorData.error || 'Failed to get system recommendations');
-      }
-
-      const recommendations = await response.json();
-      
-      // Update form data with AI recommendations
-      setServerRecommendations(recommendations);
-      handleInputChange('numberOfServers', recommendations.numberOfServers);
-      handleInputChange('hddPerServer', recommendations.drivesPerServer);
-      handleInputChange('serverModel', recommendations.serverModel);
-      
-      // Extract drive capacity from drive type
-      const driveCapacityMatch = recommendations.driveType.match(/(\d+)/);
-      if (driveCapacityMatch) {
-        handleInputChange('driveCapacityTB', parseInt(driveCapacityMatch[1]));
-      }
-
-      console.log('✅ AI System recommendations received:', recommendations);
-
-    } catch (error: any) {
-      console.error('❌ Failed to get system recommendations:', error);
-      setSystemRecommendationError(error.message || 'Failed to get AI system recommendations. Please try again or contact support via WhatsApp.');
-    } finally {
-      setIsGettingSystemRecommendations(false);
-    }
-  };
 
   const handleCalculate = async () => {
     if (!formData.cameras || Number(formData.cameras) <= 0) {
@@ -232,17 +164,15 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
     setIsCalculating(true);
     setCalculationResult(null);
     setAiRecommendations(null);
-    // Note: raidInfo and serverRecommendations are preserved for RAID calculations
-    // but will be refreshed if parameters change
 
     try {
-      // Calculate storage requirements
-      console.log('🧮 Frontend calculation input:', {
+      // Send all parameters to Gemini AI - it will calculate everything
+      console.log('🧮 Sending parameters to Gemini AI:', {
         cameras: Number(formData.cameras),
         resolution: formData.resolution,
         fps: useCustomFps && formData.customFps ? formData.customFps : formData.fps,
         codec: formData.codec,
-        quality: 'Medium', // Default quality, bitrate is now controlled by slider
+        quality: 'Medium',
         customBitrate: formData.customBitrate || undefined,
         customFps: useCustomFps ? formData.customFps : undefined,
         recordingHoursPerDay: formData.recordingHoursPerDay,
@@ -253,51 +183,6 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
         postRecordSeconds: formData.postRecordSeconds
       });
       
-      const storageCalc = calculateAccurateStorage({
-        cameras: Number(formData.cameras),
-        resolution: formData.resolution,
-        fps: formData.fps,
-        codec: formData.codec,
-        quality: 'Medium', // Default quality, bitrate is now controlled by slider
-        recordingHoursPerDay: formData.recordingHoursPerDay,
-        activityPercent: formData.activityPercent,
-        retentionDays: formData.retentionDays,
-        customBitrate: formData.customBitrate || undefined,
-        customFps: useCustomFps && formData.customFps ? formData.customFps : undefined,
-        recordingMode: formData.recordingMode,
-        preRecordSeconds: formData.preRecordSeconds,
-        postRecordSeconds: formData.postRecordSeconds
-      });
-
-      console.log('📊 Frontend storage calculation result:', storageCalc);
-      console.log('💾 Frontend Total storage TB:', storageCalc.totalStorageTB);
-      
-      setCalculationResult(storageCalc);
-      
-      // Calculate RAID overhead if RAID type is selected and system recommendations are available
-      if (formData.raidType && serverRecommendations) {
-        const totalHDDs = serverRecommendations.numberOfServers * serverRecommendations.drivesPerServer;
-        // Extract drive capacity from drive type string
-        const driveCapacityMatch = serverRecommendations.driveType.match(/(\d+)/);
-        const driveCapacityTB = driveCapacityMatch ? parseInt(driveCapacityMatch[1]) : 18;
-        
-        const raidCalc = calculateRAIDOverhead(
-          formData.raidType,
-          totalHDDs,
-          driveCapacityTB
-        );
-        setRaidInfo(raidCalc);
-      } else if (!serverRecommendations) {
-        // If no system recommendations, generate basic recommendations based on calculated storage
-        const recommendations = generateServerRecommendations(
-          storageCalc.totalStorageTB,
-          Number(formData.cameras),
-          storageCalc.totalBitrateMbps
-        );
-        setServerRecommendations(recommendations);
-      }
-
-      // Get AI recommendations
       // Use custom FPS if available, otherwise use default FPS
       const effectiveFps = useCustomFps && formData.customFps ? formData.customFps : formData.fps;
       const effectiveBitrate = formData.customBitrate || undefined;
@@ -318,6 +203,7 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
           pre_record_seconds: formData.preRecordSeconds || 2,
           post_record_seconds: formData.postRecordSeconds || 5,
           custom_bitrate: effectiveBitrate,
+          custom_fps: useCustomFps && formData.customFps ? formData.customFps : undefined,
           sessionId,
           userId: null // Add user ID if available
         })
@@ -326,11 +212,22 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
       if (response.ok) {
         const recommendations = await response.json();
         console.log('✅ AI Recommendations received:', recommendations);
-        console.log('💾 Storage TB from API:', recommendations.calculations?.total_storage_tb);
+        console.log('💾 Storage TB from Gemini:', recommendations.calculations?.total_storage_tb);
         console.log('📦 Cache status:', recommendations.cached ? 'Cache Hit' : 'Cache Miss - Fresh Calculation');
         
-        // Refresh all recommendations (works for both cached and fresh results)
+        // Set AI recommendations (contains all calculations from Gemini)
         setAiRecommendations(recommendations);
+        
+        // Convert Gemini calculations to EnhancedStorageCalculation format for display
+        const storageCalc: EnhancedStorageCalculation = {
+          bitratePerCamera: recommendations.calculations.bitrate_per_camera,
+          dailyStoragePerCameraGB: recommendations.calculations.daily_storage_per_camera_gb,
+          totalStorageTB: recommendations.calculations.total_storage_tb,
+          totalBitrateMbps: recommendations.calculations.total_bitrate_mbps,
+          adjustedBitrate: recommendations.calculations.adjusted_bitrate,
+          overhead: recommendations.calculations.overhead_factor
+        };
+        setCalculationResult(storageCalc);
         
         // Generate result ID and store in history
         const resultId = `result-${Date.now()}`;
@@ -352,12 +249,12 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
           const effectiveBitrate = formData.customBitrate || 4.0;
           
           const enhancedSummary = `The user's current storage calculation shows:
-- Required Storage: ${storageCalc.totalStorageTB.toFixed(2)} TB
+- Required Storage: ${formatStorage(recommendations.calculations.total_storage_tb)}
 - Number of Cameras: ${formData.cameras}
 - Resolution: ${formData.resolution}
 - FPS: ${effectiveFps}
 - Codec: ${formData.codec}
-- Bitrate: ${effectiveBitrate.toFixed(1)} Mbps
+- Bitrate: ${recommendations.calculations.bitrate_per_camera.toFixed(1)} Mbps per camera
 - Activity/Motion: ${formData.activityPercent}%
 - Retention Period: ${formData.retentionDays} days
 - Recording Mode: ${formData.recordingMode}
@@ -390,7 +287,7 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
         }
         
         // Add system message to chat
-        const systemMessage = `I've analyzed your requirements and found the perfect solution! You need ${storageCalc.totalStorageTB.toFixed(1)} TB of storage, and I recommend the ${recommendations.recommendation?.product_name || 'Aeroskop solution'}. This system will handle your ${formData.cameras} cameras perfectly. Feel free to ask me about optimization tips, cost savings, or any questions about your surveillance setup!`;
+        const systemMessage = `I've analyzed your requirements and found the perfect solution! You need ${formatStorage(recommendations.calculations.total_storage_tb, 1)} of storage, and I recommend the ${recommendations.recommendation?.product_name || 'Aeroskop solution'}. This system will handle your ${formData.cameras} cameras perfectly. Feel free to ask me about optimization tips, cost savings, or any questions about your surveillance setup!`;
         
         await appendSystemMessage(systemMessage, {
           resultId,
@@ -583,17 +480,22 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
     const latest = resultHistory[resultHistory.length - 1];
     const previous = resultHistory[resultHistory.length - 2];
     
+    const latestStorage = formatStorage(latest.result.totalStorageTB, 1);
+    const previousStorage = formatStorage(previous.result.totalStorageTB, 1);
+    const storageDiff = Math.abs(latest.result.totalStorageTB - previous.result.totalStorageTB);
+    const storageDiffFormatted = formatStorage(storageDiff, 1);
+    
     const comparisonMessage = `Here's how your two scenarios compare:
 
 **Your Latest Setup:**
-- ${latest.params.cameras} cameras → ${latest.result.totalStorageTB.toFixed(1)} TB storage
+- ${latest.params.cameras} cameras → ${latestStorage} storage
 - Recommended: ${latest.recommendations.recommendation?.product_name}
 
 **Your Previous Setup:**
-- ${previous.params.cameras} cameras → ${previous.result.totalStorageTB.toFixed(1)} TB storage  
+- ${previous.params.cameras} cameras → ${previousStorage} storage  
 - Recommended: ${previous.recommendations.recommendation?.product_name}
 
-**My Analysis:** ${latest.result.totalStorageTB > previous.result.totalStorageTB ? 'Your latest setup requires more storage' : 'Your latest setup is more efficient'} (${Math.abs(latest.result.totalStorageTB - previous.result.totalStorageTB).toFixed(1)} TB difference). ${latest.result.totalStorageTB > previous.result.totalStorageTB ? 'This is likely due to higher resolution, more cameras, or longer retention periods.' : 'Great optimization! You\'ve reduced storage needs while maintaining quality.'}`;
+**My Analysis:** ${latest.result.totalStorageTB > previous.result.totalStorageTB ? 'Your latest setup requires more storage' : 'Your latest setup is more efficient'} (${storageDiffFormatted} difference). ${latest.result.totalStorageTB > previous.result.totalStorageTB ? 'This is likely due to higher resolution, more cameras, or longer retention periods.' : 'Great optimization! You\'ve reduced storage needs while maintaining quality.'}`;
 
     const comparisonChatMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -683,11 +585,11 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
                 onChange={(e) => handleInputChange('resolution', e.target.value)}
                 className="w-full p-3 bg-white/70 backdrop-blur-sm border border-gray-200/60 rounded-xl px-4 py-3 hover:border-blue-300 hover:bg-white/80 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 focus:bg-white/90 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] transition-all"
               >
-                <option value="720p">720p (HD)</option>
-                <option value="1080p">1080p (Full HD)</option>
-                <option value="4MP">4MP (1440p)</option>
-                <option value="4K">4K (2160p)</option>
-                <option value="8K">8K (4320p)</option>
+                <option value="720p">720p (0.92 MP)</option>
+                <option value="1080p">1080p (2.07 MP)</option>
+                <option value="4MP">4MP (4 MP)</option>
+                <option value="4K">4K (8.29 MP)</option>
+                <option value="8K">8K</option>
               </select>
             </div>
 
@@ -756,7 +658,6 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
               >
                 <option value="H.265">H.265 (HEVC)</option>
                 <option value="H.264">H.264 (AVC)</option>
-                <option value="H.264+">H.264+ (Smart Codec)</option>
                 <option value="MJPEG">MJPEG</option>
               </select>
             </div>
@@ -834,15 +735,56 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Recording Mode
+                {formData.activityPercent >= 90 && (
+                  <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-800 text-xs font-semibold rounded">
+                    🔒 Locked
+                  </span>
+                )}
               </label>
               <select
                 value={formData.recordingMode || 'continuous'}
-                onChange={(e) => handleInputChange('recordingMode', e.target.value)}
-                className="w-full p-3 bg-white/70 backdrop-blur-sm border border-gray-200/60 rounded-xl px-4 py-3 hover:border-blue-300 hover:bg-white/80 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 focus:bg-white/90 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] transition-all"
+                onChange={(e) => {
+                  // Only allow change if Motion Activity < 90%
+                  if (formData.activityPercent < 90) {
+                    handleInputChange('recordingMode', e.target.value);
+                  }
+                }}
+                onMouseDown={(e) => {
+                  // Prevent dropdown from opening when disabled
+                  if (formData.activityPercent >= 90) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                  }
+                }}
+                onClick={(e) => {
+                  // Prevent dropdown from opening when disabled
+                  if (formData.activityPercent >= 90) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                  }
+                }}
+                disabled={formData.activityPercent >= 90}
+                style={formData.activityPercent >= 90 ? { pointerEvents: 'none' } : {}}
+                className={`w-full p-3 bg-white/70 backdrop-blur-sm border rounded-xl px-4 py-3 transition-all ${
+                  formData.activityPercent >= 90
+                    ? 'opacity-60 cursor-not-allowed bg-gray-100 border-gray-300 pointer-events-none'
+                    : 'border-gray-200/60 hover:border-blue-300 hover:bg-white/80 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 focus:bg-white/90 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]'
+                }`}
               >
                 <option value="continuous">Continuous Recording</option>
-                <option value="motion">Motion-Triggered Recording</option>
+                <option value="motion" disabled={formData.activityPercent >= 90}>
+                  Motion-Triggered Recording
+                  {formData.activityPercent >= 90 ? ' (Not available when Motion Activity ≥ 90%)' : ''}
+                </option>
               </select>
+              {formData.activityPercent >= 90 && (
+                <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                  <span>🔒</span>
+                  <span>Recording Mode is locked to "Continuous" because Motion Activity is {formData.activityPercent}% (must be &lt; 90% for Motion-Triggered Recording)</span>
+                </p>
+              )}
             </div>
 
             {/* Motion-Triggered Settings */}
@@ -1040,7 +982,7 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
               <div className="space-y-2">
                 <div className="bg-gradient-to-r from-blue-50/80 to-blue-100/60 backdrop-blur-sm rounded-xl border border-blue-200/50 p-3">
                   <p className="text-xs text-gray-600 mb-1">Total Storage Required</p>
-                  <p className="text-xl font-bold text-blue-600">{calculationResult.totalStorageTB.toFixed(2)} TB</p>
+                  <p className="text-xl font-bold text-blue-600">{formatStorage(calculationResult.totalStorageTB)}</p>
                 </div>
                 <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-blue-200/50 p-3">
                   <p className="text-xs text-gray-600 mb-1">Daily per Camera</p>
@@ -1050,12 +992,6 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
                   <p className="text-xs text-gray-600 mb-1">Total Bitrate</p>
                   <p className="text-sm font-semibold text-gray-900">{calculationResult.totalBitrateMbps.toFixed(2)} Mbps</p>
                 </div>
-                {raidInfo && (
-                  <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-blue-200/50 p-3">
-                    <p className="text-xs text-gray-600 mb-1">Usable Capacity</p>
-                    <p className="text-sm font-semibold text-blue-600">{raidInfo.usableCapacityTB.toFixed(2)} TB</p>
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -1092,23 +1028,40 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
           
           {calculationResult && (
             <>
-              {/* Basic Metrics */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div className="bg-white/80 backdrop-blur-md rounded-xl border border-blue-100/50 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] p-4">
-                  <h3 className="font-semibold text-gray-700">Total Storage Required</h3>
-                  <p className="text-2xl font-bold text-blue-600">{calculationResult.totalStorageTB.toFixed(2)} TB</p>
-                </div>
-                <div className="bg-white/80 backdrop-blur-md rounded-xl border border-blue-100/50 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] p-4">
-                  <h3 className="font-semibold text-gray-700">Daily Storage per Camera</h3>
-                  <p className="text-2xl font-bold text-blue-600">{calculationResult.dailyStoragePerCameraGB.toFixed(2)} GB</p>
-                </div>
-                <div className="bg-white/80 backdrop-blur-md rounded-xl border border-blue-100/50 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] p-4">
-                  <h3 className="font-semibold text-gray-700">Total Bitrate</h3>
-                  <p className="text-2xl font-bold text-blue-600">{calculationResult.totalBitrateMbps.toFixed(2)} Mbps</p>
-                </div>
-                <div className="bg-white/80 backdrop-blur-md rounded-xl border border-blue-100/50 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] p-4">
-                  <h3 className="font-semibold text-gray-700">Bitrate per Camera</h3>
-                  <p className="text-2xl font-bold text-blue-600">{calculationResult.bitratePerCamera.toFixed(2)} Mbps</p>
+              {/* Storage Analysis Result Section */}
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Storage Analysis Result</h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                  {/* Total Usable Capacity */}
+                  <div className="bg-white/80 backdrop-blur-md rounded-xl border border-blue-100/50 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] p-4">
+                    <h3 className="font-semibold text-gray-700 mb-2">Total Usable Capacity</h3>
+                    <p className="text-2xl font-bold text-blue-600">{formatStorage(calculationResult.totalStorageTB)}</p>
+                    <p className="text-xs text-gray-500 mt-1">GB if &lt; 1 TB, TB if ≥ 1 TB</p>
+                  </div>
+                  
+                  {/* Daily Storage Capacity - ALWAYS in GB */}
+                  <div className="bg-white/80 backdrop-blur-md rounded-xl border border-blue-100/50 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] p-4">
+                    <h3 className="font-semibold text-gray-700 mb-2">Daily Storage Capacity</h3>
+                    <p className="text-2xl font-bold text-green-600">
+                      {aiRecommendations?.calculations?.daily_storage_tb 
+                        ? formatDailyStorageAlwaysGB(aiRecommendations.calculations.daily_storage_tb)
+                        : `${(calculationResult.dailyStoragePerCameraGB * Number(formData.cameras || 0)).toFixed(2)} GB`}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">Always displayed in GB</p>
+                  </div>
+                  
+                  {/* Bitrate Per Camera */}
+                  <div className="bg-white/80 backdrop-blur-md rounded-xl border border-blue-100/50 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] p-4">
+                    <h3 className="font-semibold text-gray-700 mb-2">Bitrate Per Camera</h3>
+                    <p className="text-2xl font-bold text-purple-600">{calculationResult.bitratePerCamera.toFixed(2)} Mbps</p>
+                  </div>
+                  
+                  {/* Total Bit Rate */}
+                  <div className="bg-white/80 backdrop-blur-md rounded-xl border border-blue-100/50 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] p-4">
+                    <h3 className="font-semibold text-gray-700 mb-2">Total Bit Rate</h3>
+                    <p className="text-2xl font-bold text-orange-600">{calculationResult.totalBitrateMbps.toFixed(2)} Mbps</p>
+                  </div>
                 </div>
               </div>
 
@@ -1126,30 +1079,12 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
                     </thead>
                     <tbody>
                       <tr className="bg-white/40 hover:bg-white/60 transition-colors">
-                        <td className="border-b border-gray-200/40 px-4 py-2 font-medium text-gray-700">Usable Storage (TB)</td>
+                        <td className="border-b border-gray-200/40 px-4 py-2 font-medium text-gray-700">Total Storage Required</td>
                         <td className="border-b border-gray-200/40 px-4 py-2 font-semibold text-blue-600">
-                          {raidInfo ? raidInfo.usableCapacityTB.toFixed(2) : calculationResult.totalStorageTB.toFixed(2)}
+                          {formatStorage(calculationResult.totalStorageTB)}
                         </td>
                         <td className="border-b border-gray-200/40 px-4 py-2 text-sm text-gray-600">
-                          Total space available after RAID overhead
-                        </td>
-                      </tr>
-                      <tr className="bg-white/40 hover:bg-white/60 transition-colors">
-                        <td className="border-b border-gray-200/40 px-4 py-2 font-medium text-gray-700">Raw Capacity Needed (TB)</td>
-                        <td className="border-b border-gray-200/40 px-4 py-2 font-semibold text-gray-900">
-                          {raidInfo ? raidInfo.rawCapacityTB.toFixed(2) : (calculationResult.totalStorageTB * 1.5).toFixed(2)}
-                        </td>
-                        <td className="border-b border-gray-200/40 px-4 py-2 text-sm text-gray-600">
-                          Total disk capacity required before redundancy
-                        </td>
-                      </tr>
-                      <tr className="bg-white/40 hover:bg-white/60 transition-colors">
-                        <td className="border-b border-gray-200/40 px-4 py-2 font-medium text-gray-700">RAID Overhead</td>
-                        <td className="border-b border-gray-200/40 px-4 py-2 font-semibold text-red-600">
-                          {raidInfo ? `${raidInfo.overheadPercent.toFixed(1)}%` : 'N/A'}
-                        </td>
-                        <td className="border-b border-gray-200/40 px-4 py-2 text-sm text-gray-600">
-                          {raidInfo ? `Automatically calculated for ${formData.raidType}` : 'No RAID configured'}
+                          Total storage space required including 20% overhead
                         </td>
                       </tr>
                       <tr className="bg-white/40 hover:bg-white/60 transition-colors">
@@ -1173,190 +1108,100 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
                 </div>
               </div>
 
-              {/* RAID/ZFS Protection Selection (Only shown after calculation) */}
-              {calculationResult && (
-                <div className="mt-6 space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      RAID/ZFS Protection Type
-                    </label>
-                    <select
-                      value={formData.raidType || ''}
-                      onChange={(e) => handleInputChange('raidType', e.target.value as any || undefined)}
-                      className="w-full p-3 bg-white/70 backdrop-blur-sm border border-gray-200/60 rounded-xl px-4 py-3 hover:border-blue-300 hover:bg-white/80 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 focus:bg-white/90 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] transition-all"
-                    >
-                      <option value="">Select RAID Type...</option>
-                      <option value="RAID-1">RAID-1 (Recommended for OS/VMS boot drives, 50% overhead)</option>
-                      <option value="RAID-5">RAID-5 (Single-disk redundancy, ~33% overhead)</option>
-                      <option value="RAID-6">RAID-6 (Dual-disk redundancy, ~50% overhead)</option>
-                      <option value="RAID-Z1">RAID-Z1 (OpenZFS single parity, ~33% overhead)</option>
-                      <option value="RAID-Z2">RAID-Z2 (OpenZFS dual parity, ~50% overhead)</option>
-                    </select>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Select RAID protection to calculate usable capacity
-                    </p>
-                  </div>
+              {/* Aeroskop Product Recommendations Section */}
+              {aiRecommendations && (aiRecommendations.top_products && aiRecommendations.top_products.length > 0 || aiRecommendations.recommendation) && (() => {
+                // Get unique products - filter out duplicates by product_name
+                let productsToShow: any[] = [];
+                
+                if (aiRecommendations.top_products && aiRecommendations.top_products.length > 0) {
+                  // Filter out duplicates
+                  const uniqueProducts = aiRecommendations.top_products.filter((product, index, self) =>
+                    index === self.findIndex((p) => p.product_name === product.product_name)
+                  );
+                  productsToShow = uniqueProducts;
+                } else if (aiRecommendations.recommendation) {
+                  productsToShow = [aiRecommendations.recommendation];
+                }
+                
+                // Only show if we have at least one product
+                if (productsToShow.length === 0) return null;
+                
+                return (
+                  <div className="mb-6 border-t border-gray-200 pt-6 mt-6">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Recommended Aeroskop Products</h2>
+                    
+                    <div className={`grid gap-6 ${productsToShow.length === 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+                      {productsToShow.map((product, index) => (
+                      <div key={index} className="bg-white/90 backdrop-blur-md rounded-xl border border-blue-100/50 shadow-[0_4px_12px_rgba(0,0,0,0.08)] p-6 hover:shadow-[0_6px_20px_rgba(0,0,0,0.12)] transition-all">
+                        <div className="flex items-start justify-between mb-4">
+                          <div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-1">{product.product_name}</h3>
+                            <p className="text-sm text-gray-600">Model: {product.product_model}</p>
+                          </div>
+                          {index === 0 && (
+                            <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full">
+                              Best Match
+                            </span>
+                          )}
+                        </div>
+                        
+                        <p className="text-sm text-gray-700 mb-4">{product.why_recommended}</p>
+                        
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                          <div className="bg-blue-50/50 rounded-lg p-3">
+                            <p className="text-xs text-gray-600 mb-1">Channels</p>
+                            <p className="text-sm font-semibold text-gray-900">{product.channel_capacity}</p>
+                          </div>
+                          <div className="bg-blue-50/50 rounded-lg p-3">
+                            <p className="text-xs text-gray-600 mb-1">Storage</p>
+                            <p className="text-sm font-semibold text-gray-900">{product.storage_capacity_tb} TB</p>
+                          </div>
+                          <div className="bg-blue-50/50 rounded-lg p-3">
+                            <p className="text-xs text-gray-600 mb-1">CPU</p>
+                            <p className="text-sm font-semibold text-gray-900">{product.cpu}</p>
+                          </div>
+                          <div className="bg-blue-50/50 rounded-lg p-3">
+                            <p className="text-xs text-gray-600 mb-1">RAM</p>
+                            <p className="text-sm font-semibold text-gray-900">{product.ram}</p>
+                          </div>
+                        </div>
 
-                  {/* RAID Capacity Display */}
-                  {raidInfo && formData.raidType && (
-                    <div className="bg-blue-50/80 backdrop-blur-sm p-4 rounded-xl border border-blue-200/60 shadow-[0_2px_8px_rgba(59,130,246,0.08)]">
-                      <h4 className="text-sm font-semibold text-blue-900 mb-2">RAID Capacity Calculation</h4>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-700">Raw Capacity:</span>
-                          <span className="font-semibold">{raidInfo.rawCapacityTB.toFixed(2)} TB</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-700">Usable Capacity:</span>
-                          <span className="font-semibold text-blue-600">{raidInfo.usableCapacityTB.toFixed(2)} TB</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-700">RAID Overhead:</span>
-                          <span className="font-semibold text-red-700">{raidInfo.overheadPercent.toFixed(1)}% ({raidInfo.overheadTB.toFixed(2)} TB)</span>
-                        </div>
+                        {product.key_benefits && product.key_benefits.length > 0 && (
+                          <div className="mb-4">
+                            <p className="text-xs font-semibold text-gray-700 mb-2">Key Features:</p>
+                            <ul className="space-y-1">
+                              {product.key_benefits.map((benefit: string, idx: number) => (
+                                <li key={idx} className="text-xs text-gray-600 flex items-center gap-2">
+                                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                  {benefit}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {product.product_url && (
+                          <a
+                            href={product.product_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full inline-block text-center bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-6 rounded-xl shadow-[0_4px_14px_0_rgba(59,130,246,0.3)] hover:shadow-[0_6px_20px_rgba(59,130,246,0.4)] transition-all"
+                          >
+                            View Product Details →
+                          </a>
+                        )}
                       </div>
+                      ))}
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
+                );
+              })()}
 
             </>
           )}
 
-          {/* AI System Configuration Section */}
-          {calculationResult && (
-            <div className="border-t border-gray-200 pt-6 mt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">AI System Configuration</h3>
-              
-              {/* Get AI Recommendations Button */}
-              {!serverRecommendations && (
-                <div className="space-y-4">
-                  <button
-                    onClick={handleGetSystemRecommendations}
-                    disabled={isGettingSystemRecommendations || !formData.cameras}
-                    className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:bg-gray-300/50 disabled:opacity-60 backdrop-blur-sm text-white font-semibold py-3 px-6 rounded-xl shadow-[0_4px_14px_0_rgba(59,130,246,0.3)] hover:shadow-[0_6px_20px_rgba(59,130,246,0.4)] hover:brightness-110 transition-all duration-200 flex items-center justify-center gap-2"
-                  >
-                    {isGettingSystemRecommendations ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        Getting AI Recommendations...
-                      </>
-                    ) : (
-                      <>
-                        <Bot className="w-4 h-4" />
-                        Get AI System Recommendations
-                      </>
-                    )}
-                  </button>
-                  
-                  {systemRecommendationError && (
-                    <div className="bg-red-50/80 backdrop-blur-sm border border-red-200/60 rounded-xl p-4">
-                      <div className="flex items-start gap-3">
-                        <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-red-900 mb-1">Unable to Get AI Recommendations</h4>
-                          <p className="text-sm text-red-700 mb-3">{systemRecommendationError}</p>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={handleGetSystemRecommendations}
-                              className="text-sm bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl font-medium shadow-[0_4px_12px_rgba(220,38,38,0.3)] hover:shadow-[0_6px_16px_rgba(220,38,38,0.4)] transition-all"
-                            >
-                              Try Again
-                            </button>
-                            <a
-                              href="https://wa.me/97377992203?text=I'm having trouble getting AI system recommendations on the storage calculator. Can you help?"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-medium inline-flex items-center gap-2 shadow-[0_4px_12px_rgba(59,130,246,0.3)] hover:shadow-[0_6px_16px_rgba(59,130,246,0.4)] transition-all"
-                            >
-                              Contact Support via WhatsApp
-                            </a>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  <p className="text-xs text-gray-500 text-center">
-                    Click to get AI-powered system configuration recommendations based on your storage requirements
-                  </p>
-                </div>
-              )}
 
-              {/* Display AI Recommendations */}
-              {serverRecommendations && (
-                <div className="bg-gradient-to-r from-blue-50/80 to-blue-100/60 backdrop-blur-lg p-6 rounded-2xl border border-blue-200/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                      <Bot className="w-5 h-5 text-blue-600" />
-                      AI Recommended Configuration
-                    </h4>
-                    <button
-                      onClick={() => {
-                        setServerRecommendations(null);
-                        handleInputChange('numberOfServers', undefined);
-                        handleInputChange('hddPerServer', undefined);
-                        handleInputChange('driveCapacityTB', undefined);
-                        handleInputChange('serverModel', undefined);
-                        handleInputChange('raidType', undefined);
-                        setRaidInfo(null);
-                      }}
-                      className="text-sm text-gray-600 hover:text-gray-900"
-                    >
-                      Reset
-                    </button>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div className="bg-white/80 backdrop-blur-md p-4 rounded-xl border border-gray-200/60 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
-                      <p className="text-sm text-gray-600 mb-1">Number of Servers</p>
-                      <p className="text-xl font-bold text-gray-900">{serverRecommendations.numberOfServers}</p>
-                    </div>
-                    <div className="bg-white/80 backdrop-blur-md p-4 rounded-xl border border-gray-200/60 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
-                      <p className="text-sm text-gray-600 mb-1">Drives per Server</p>
-                      <p className="text-xl font-bold text-gray-900">{serverRecommendations.drivesPerServer}</p>
-                    </div>
-                    <div className="bg-white/80 backdrop-blur-md p-4 rounded-xl border border-gray-200/60 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
-                      <p className="text-sm text-gray-600 mb-1">Drive Type</p>
-                      <p className="text-lg font-bold text-gray-900">{serverRecommendations.driveType}</p>
-                    </div>
-                    <div className="bg-white/80 backdrop-blur-md p-4 rounded-xl border border-gray-200/60 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
-                      <p className="text-sm text-gray-600 mb-1">Network</p>
-                      <p className="text-lg font-bold text-gray-900">{serverRecommendations.network}</p>
-                    </div>
-                    <div className="bg-white/80 backdrop-blur-md p-4 rounded-xl border border-gray-200/60 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
-                      <p className="text-sm text-gray-600 mb-1">CPU</p>
-                      <p className="text-sm font-bold text-gray-900">{serverRecommendations.cpu}</p>
-                    </div>
-                    <div className="bg-white/80 backdrop-blur-md p-4 rounded-xl border border-gray-200/60 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
-                      <p className="text-sm text-gray-600 mb-1">Memory</p>
-                      <p className="text-sm font-bold text-gray-900">{serverRecommendations.memory}</p>
-                    </div>
-                    <div className="bg-white/80 backdrop-blur-md p-4 rounded-xl border border-gray-200/60 shadow-[0_2px_8px_rgba(0,0,0,0.03)] md:col-span-2">
-                      <p className="text-sm text-gray-600 mb-1">OS/Filesystem</p>
-                      <p className="text-sm font-bold text-gray-900">{serverRecommendations.osFilesystem}</p>
-                    </div>
-                  </div>
-                  
-                  {serverRecommendations.rationale && serverRecommendations.rationale.length > 0 && (
-                    <div className="mt-4">
-                      <p className="text-sm font-semibold text-gray-700 mb-2">Why These Recommendations:</p>
-                      <ul className="space-y-1">
-                        {serverRecommendations.rationale.map((item, index) => (
-                          <li key={index} className="text-sm text-gray-600 flex items-start gap-2">
-                            <span className="text-blue-600">•</span>
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Export Buttons - Moved below AI System Configuration */}
+          {/* Export Buttons */}
           {calculationResult && (
             <div className="border-t border-gray-200 pt-6 mt-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Export Results</h3>
@@ -1368,9 +1213,7 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
                     try {
                       await generateEnhancedPDFReport({
                         formData,
-                        calculationResult,
-                        serverRecommendations: serverRecommendations || undefined,
-                        raidInfo: raidInfo || undefined
+                        calculationResult
                       });
                     } catch (error) {
                       console.error('PDF export failed:', error);
@@ -1392,9 +1235,7 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
                     try {
                       await generateExcelReport({
                         formData,
-                        calculationResult,
-                        serverRecommendations: serverRecommendations || undefined,
-                        raidInfo: raidInfo || undefined
+                        calculationResult
                       });
                     } catch (error) {
                       console.error('Excel export failed:', error);
@@ -1416,9 +1257,7 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
                     try {
                       await generateCSVReport({
                         formData,
-                        calculationResult,
-                        serverRecommendations: serverRecommendations || undefined,
-                        raidInfo: raidInfo || undefined
+                        calculationResult
                       });
                     } catch (error) {
                       console.error('CSV export failed:', error);
@@ -1437,33 +1276,6 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
             </div>
           )}
 
-          {aiRecommendations && (
-            <div className="bg-white/80 backdrop-blur-md p-6 rounded-2xl border border-blue-200/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">AI Recommendation</h3>
-              <div className="bg-white/90 backdrop-blur-sm p-4 rounded-xl border border-gray-200/60">
-                <h4 className="font-bold text-lg text-blue-600 mb-2">
-                  {aiRecommendations.recommendation?.product_name}
-                </h4>
-                <p className="text-gray-700 mb-4">
-                  {aiRecommendations.recommendation?.why_recommended}
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="font-semibold">Model:</span> {aiRecommendations.recommendation?.product_model}
-                  </div>
-                  <div>
-                    <span className="font-semibold">Channels:</span> {aiRecommendations.recommendation?.channel_capacity}
-                  </div>
-                  <div>
-                    <span className="font-semibold">Storage:</span> {aiRecommendations.recommendation?.storage_capacity_tb} TB
-                  </div>
-                  <div>
-                    <span className="font-semibold">CPU:</span> {aiRecommendations.recommendation?.cpu}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Disclaimer Section */}
           <div className="border-t border-gray-300 pt-6 mt-6">

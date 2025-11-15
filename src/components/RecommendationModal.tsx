@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { AIRecommendationResponse } from '@/lib/types';
 import { generatePDFReport } from '@/lib/pdfGenerator';
+import { formatStorage, formatDailyStorage } from '@/lib/storageFormatter';
 
 interface RecommendationModalProps {
   isOpen: boolean;
@@ -66,7 +67,7 @@ Aeroskop Team`;
               <h2 className="text-2xl font-bold text-slate-900">AI Storage Recommendations</h2>
               <p className="text-slate-600 mt-1">
                 {recommendations.cached ? 'Cached recommendation' : 'Fresh AI analysis'} • 
-                {Number(recommendations.calculations.total_storage_tb || 0).toFixed(1)} TB total storage needed
+                {formatStorage(Number(recommendations.calculations.total_storage_tb || 0), 1)} total storage needed
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -285,7 +286,7 @@ Aeroskop Team`;
               <h4 className="font-semibold text-blue-900 mb-2">Final Calculation</h4>
               <p className="text-sm text-slate-700">
                 Total Storage: <span className="font-bold text-blue-600 text-lg">
-                  {Number(recommendations.calculations.total_storage_tb || 0).toFixed(2)} TB
+                  {formatStorage(Number(recommendations.calculations.total_storage_tb || 0))}
                 </span>
                 <span className="text-xs text-slate-500 ml-2">
                   (includes {Number(recommendations.calculations.overhead_factor || 1.2).toFixed(1)}x overhead)
@@ -296,11 +297,11 @@ Aeroskop Team`;
             {/* Summary Grid */}
             <div className="grid md:grid-cols-4 gap-4 mt-6">
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{Number(recommendations.calculations.total_storage_tb || 0).toFixed(1)} TB</div>
+                <div className="text-2xl font-bold text-blue-600">{formatStorage(Number(recommendations.calculations.total_storage_tb || 0), 1)}</div>
                 <div className="text-sm text-slate-600">Total Storage Needed</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{Number(recommendations.calculations.daily_storage_tb || 0).toFixed(2)} TB</div>
+                <div className="text-2xl font-bold text-green-600">{formatDailyStorage(Number(recommendations.calculations.daily_storage_tb || 0))}</div>
                 <div className="text-sm text-slate-600">Daily Storage</div>
               </div>
               <div className="text-center">

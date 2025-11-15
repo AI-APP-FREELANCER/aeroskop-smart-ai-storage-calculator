@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Calculator, MessageSquare, Send, Bot, User, AlertCircle, X } from 'lucide-react';
 import { calculateAccurateStorage } from '@/lib/storageCalculations';
 import { AIRecommendationResponse, CalculatorForm } from '@/lib/types';
+import { formatStorage } from '@/lib/storageFormatter';
 
 interface UnifiedAICalculatorProps {
   className?: string;
@@ -278,7 +279,6 @@ export default function UnifiedAICalculator({ className = '' }: UnifiedAICalcula
               >
                 <option value="H.265">H.265 (HEVC)</option>
                 <option value="H.264">H.264 (AVC)</option>
-                <option value="H.264+">H.264+ (Smart Codec)</option>
                 <option value="MJPEG">MJPEG</option>
               </select>
             </div>
@@ -469,7 +469,7 @@ export default function UnifiedAICalculator({ className = '' }: UnifiedAICalcula
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               <div className="bg-blue-50 p-4 rounded-lg">
                 <h3 className="font-semibold text-blue-900">Total Storage Required</h3>
-                <p className="text-2xl font-bold text-blue-600">{calculationResult.totalStorageTB.toFixed(2)} TB</p>
+                <p className="text-2xl font-bold text-blue-600">{formatStorage(calculationResult.totalStorageTB)}</p>
               </div>
               <div className="bg-green-50 p-4 rounded-lg">
                 <h3 className="font-semibold text-green-900">Daily Storage per Camera</h3>

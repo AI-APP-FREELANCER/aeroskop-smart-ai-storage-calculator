@@ -1,5 +1,5 @@
 import { EnhancedStorageCalculation, ServerRecommendation, CalculatorForm } from './types';
-import { calculateRAIDOverhead } from './storageCalculations';
+// Note: RAID calculations removed - storage calculations now done by Gemini AI
 
 const DISCLAIMER_TEXT = `Disclaimer:
 The results provided by this calculator are approximate estimations intended for planning and reference purposes only.
@@ -11,12 +11,6 @@ interface ExportData {
   formData: CalculatorForm;
   calculationResult: EnhancedStorageCalculation;
   serverRecommendations?: ServerRecommendation;
-  raidInfo?: {
-    rawCapacityTB: number;
-    usableCapacityTB: number;
-    overheadPercent: number;
-    overheadTB: number;
-  };
 }
 
 export async function generateExcelReport(data: ExportData): Promise<string> {
@@ -40,7 +34,6 @@ export async function generateExcelReport(data: ExportData): Promise<string> {
     ['Pre-Record Time (seconds)', data.formData.preRecordSeconds || 2],
     ['Post-Record Time (seconds)', data.formData.postRecordSeconds || 5],
     ['Number of Servers', data.formData.numberOfServers || 'N/A'],
-    ['RAID Type', data.formData.raidType || 'N/A'],
     ['HDDs per Server', data.formData.hddPerServer || 'N/A'],
     ['Drive Capacity (TB)', data.formData.driveCapacityTB || 'N/A'],
     ['Server Model', data.formData.serverModel || 'N/A']
@@ -69,9 +62,7 @@ export async function generateExcelReport(data: ExportData): Promise<string> {
   // Worksheet 3: Storage Requirements
   const storageReqs = [
     ['Metric', 'Value', 'Description'],
-    ['Usable Storage (TB)', data.raidInfo ? data.raidInfo.usableCapacityTB.toFixed(2) : data.calculationResult.totalStorageTB.toFixed(2), 'Total space available after RAID overhead'],
-    ['Raw Capacity Needed (TB)', data.raidInfo ? data.raidInfo.rawCapacityTB.toFixed(2) : (data.calculationResult.totalStorageTB * 1.5).toFixed(2), 'Total disk capacity required before redundancy'],
-    ['RAID Overhead', data.raidInfo ? `${data.raidInfo.overheadPercent.toFixed(1)}%` : 'N/A', data.raidInfo ? `Automatically calculated for ${data.formData.raidType}` : 'No RAID configured'],
+    ['Total Storage Required (TB)', data.calculationResult.totalStorageTB.toFixed(2), 'Total storage space required including 20% overhead'],
     ['Retention Days', data.formData.retentionDays.toString(), 'Duration for which recordings are stored'],
     ['Average Motion % (Adjusted)', (data.calculationResult.adjustedMotionPercent || data.formData.activityPercent).toFixed(1), 'After applying pre/post detection intervals']
   ];
@@ -79,26 +70,7 @@ export async function generateExcelReport(data: ExportData): Promise<string> {
   const storageSheet = XLSX.utils.aoa_to_sheet(storageReqs);
   XLSX.utils.book_append_sheet(workbook, storageSheet, 'Storage Requirements');
 
-  // Worksheet 4: RAID/ZFS Protection Details
-  if (data.raidInfo && data.formData.raidType) {
-    const raidDetails = [
-      ['Parameter', 'Value'],
-      ['RAID Type', data.formData.raidType],
-      ['Number of Servers', (data.formData.numberOfServers || 1).toString()],
-      ['HDDs per Server', (data.formData.hddPerServer || 0).toString()],
-      ['Total HDDs', ((data.formData.numberOfServers || 1) * (data.formData.hddPerServer || 0)).toString()],
-      ['Drive Capacity (TB)', (data.formData.driveCapacityTB || 0).toString()],
-      ['Raw Capacity (TB)', data.raidInfo.rawCapacityTB.toFixed(2)],
-      ['Usable Capacity (TB)', data.raidInfo.usableCapacityTB.toFixed(2)],
-      ['RAID Overhead (%)', data.raidInfo.overheadPercent.toFixed(1)],
-      ['RAID Overhead (TB)', data.raidInfo.overheadTB.toFixed(2)]
-    ];
-    
-    const raidSheet = XLSX.utils.aoa_to_sheet(raidDetails);
-    XLSX.utils.book_append_sheet(workbook, raidSheet, 'RAID Details');
-  }
-
-  // Worksheet 5: Server Configuration Recommendations
+  // Worksheet 4: Server Configuration Recommendations
   if (data.serverRecommendations) {
     const serverRecs = [
       ['Parameter', 'Recommendation'],

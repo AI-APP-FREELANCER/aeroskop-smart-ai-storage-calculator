@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { query } from '@/lib/db';
-import { calculateAccurateStorage } from '@/lib/storageCalculations';
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -9,29 +8,31 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 const SYSTEM_RECOMMENDATION_PROMPT = `
 You are an expert system architect for surveillance storage solutions. Based on the user's camera setup and storage requirements, recommend optimal server hardware configuration.
 
+CRITICAL: You MUST provide DYNAMIC recommendations that vary based on the actual parameters provided. Do NOT return the same values for different inputs.
+
 Provide recommendations in JSON format with this exact structure:
 {
-  "numberOfServers": number (1-5 based on storage needs),
-  "drivesPerServer": number (4-24 based on capacity),
-  "driveType": "Enterprise 16 TB" | "Enterprise 18 TB" | "Enterprise 20-22 TB",
-  "network": "Dual 10 GbE links" | "Dual 25 GbE links",
-  "cpu": "Intel Xeon Silver 4410Y (12 Core) or AMD EPYC 7313+",
-  "memory": "96-128 GB RAM per server" | "128 GB RAM per server",
-  "osFilesystem": "Ubuntu Server 22.04 LTS with OpenZFS" | "Ubuntu Server 22.04 LTS with Ceph",
-  "rationale": ["reason 1", "reason 2", "reason 3"],
-  "serverModel": "suggested model name (e.g., Rhino ASK-SR224)"
+  "numberOfServers": number (calculate based on storage: <150 TB = 1, 150-250 TB = 2, >250 TB = 3+),
+  "drivesPerServer": number (calculate based on storage per server: <100 TB/server = 6-12, 100-200 TB/server = 12-18, >200 TB/server = 18-24),
+  "driveType": "Enterprise 16 TB" | "Enterprise 18 TB" | "Enterprise 20-22 TB" (choose based on capacity needs),
+  "network": "Dual 10 GbE links" | "Dual 25 GbE links" (choose based on bitrate: <500 Mbps = 10 GbE, >=500 Mbps or >100 cameras = 25 GbE),
+  "cpu": "Intel Xeon Silver 4410Y (12 Core) or AMD EPYC 7313+" (adjust based on load),
+  "memory": "96-128 GB RAM per server" | "128 GB RAM per server" (more for larger deployments),
+  "osFilesystem": "Ubuntu Server 22.04 LTS with OpenZFS" | "Ubuntu Server 22.04 LTS with Ceph" (Ceph for multi-server),
+  "rationale": ["specific reason 1 based on parameters", "specific reason 2", "specific reason 3"],
+  "serverModel": "Rhino ASK-SR212" | "Rhino ASK-SR224" | "other model" (choose based on capacity)
 }
 
-SCALING RULES:
-- <150 TB usable: 1 server
-- 150-250 TB: 2 servers (cluster)
-- >250 TB: 3+ servers (distributed cluster)
+IMPORTANT CALCULATION RULES:
+- Calculate numberOfServers: Math.ceil(totalStorageTB / 150) but max 5, min 1
+- Calculate drivesPerServer: Based on (totalStorageTB / numberOfServers), choose appropriate drive count
+- Choose driveType: Larger storage needs = larger drives (20-22 TB for >300 TB, 18 TB for 150-300 TB, 16 TB for <150 TB)
+- Choose network: totalBitrateMbps >= 500 OR cameras > 100 = Dual 25 GbE, else Dual 10 GbE
+- Choose memory: numberOfServers > 1 OR totalStorageTB > 200 = "128 GB RAM per server", else "96-128 GB RAM per server"
+- Choose osFilesystem: numberOfServers > 1 = "Ubuntu Server 22.04 LTS with Ceph", else "Ubuntu Server 22.04 LTS with OpenZFS"
+- Generate specific rationale based on actual numbers provided
 
-NETWORK RULES:
-- <500 Mbps total: Dual 10 GbE
-- >500 Mbps or >100 cameras: Dual 25 GbE
-
-Return ONLY valid JSON, no additional text.
+Return ONLY valid JSON, no additional text. Make sure values change based on input parameters.
 `;
 
 interface SystemRecommendationRequest {
@@ -112,17 +113,17 @@ Generate server configuration recommendations:`;
         });
       }
 
-      // Validate and enhance recommendations
+      // Validate recommendations from Gemini - use Gemini's values, only validate types
       const validatedRecommendations = {
-        numberOfServers: recommendations.numberOfServers || calculateServers(body.totalStorageTB),
-        drivesPerServer: recommendations.drivesPerServer || calculateDrives(body.totalStorageTB, recommendations.numberOfServers || 1),
-        driveType: recommendations.driveType || 'Enterprise 18 TB',
-        network: recommendations.network || (body.totalBitrateMbps > 1000 ? 'Dual 25 GbE links' : 'Dual 10 GbE links'),
-        cpu: recommendations.cpu || 'Intel Xeon Silver 4410Y (12 Core) or AMD EPYC 7313+',
-        memory: recommendations.memory || '96-128 GB RAM per server',
-        osFilesystem: recommendations.osFilesystem || (recommendations.numberOfServers > 1 ? 'Ubuntu Server 22.04 LTS with Ceph' : 'Ubuntu Server 22.04 LTS with OpenZFS'),
-        rationale: Array.isArray(recommendations.rationale) ? recommendations.rationale : generateRationale(body, recommendations),
-        serverModel: recommendations.serverModel || 'Rhino ASK-SR224',
+        numberOfServers: typeof recommendations.numberOfServers === 'number' ? recommendations.numberOfServers : calculateServers(body.totalStorageTB),
+        drivesPerServer: typeof recommendations.drivesPerServer === 'number' ? recommendations.drivesPerServer : calculateDrives(body.totalStorageTB, recommendations.numberOfServers || 1),
+        driveType: typeof recommendations.driveType === 'string' ? recommendations.driveType : (body.totalStorageTB > 300 ? 'Enterprise 20-22 TB' : body.totalStorageTB > 150 ? 'Enterprise 18 TB' : 'Enterprise 16 TB'),
+        network: typeof recommendations.network === 'string' ? recommendations.network : (body.totalBitrateMbps >= 500 || body.cameras > 100 ? 'Dual 25 GbE links' : 'Dual 10 GbE links'),
+        cpu: typeof recommendations.cpu === 'string' ? recommendations.cpu : 'Intel Xeon Silver 4410Y (12 Core) or AMD EPYC 7313+',
+        memory: typeof recommendations.memory === 'string' ? recommendations.memory : ((recommendations.numberOfServers > 1 || body.totalStorageTB > 200) ? '128 GB RAM per server' : '96-128 GB RAM per server'),
+        osFilesystem: typeof recommendations.osFilesystem === 'string' ? recommendations.osFilesystem : (recommendations.numberOfServers > 1 ? 'Ubuntu Server 22.04 LTS with Ceph' : 'Ubuntu Server 22.04 LTS with OpenZFS'),
+        rationale: Array.isArray(recommendations.rationale) && recommendations.rationale.length > 0 ? recommendations.rationale : generateRationale(body, recommendations),
+        serverModel: typeof recommendations.serverModel === 'string' ? recommendations.serverModel : (recommendations.numberOfServers > 1 ? 'Rhino ASK-SR224' : 'Rhino ASK-SR212'),
         isFallback: false
       };
 

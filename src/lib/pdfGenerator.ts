@@ -1,5 +1,4 @@
 import { EnhancedStorageCalculation, ServerRecommendation, CalculatorForm } from './types';
-import { calculateRAIDOverhead } from './storageCalculations';
 
 // Dynamic import for client-side usage
 let jsPDF: any;
@@ -37,12 +36,6 @@ interface EnhancedExportData {
   formData: CalculatorForm;
   calculationResult: EnhancedStorageCalculation;
   serverRecommendations?: ServerRecommendation;
-  raidInfo?: {
-    rawCapacityTB: number;
-    usableCapacityTB: number;
-    overheadPercent: number;
-    overheadTB: number;
-  };
 }
 
 // Enhanced PDF generator for new calculator format
@@ -110,7 +103,6 @@ export async function generateEnhancedPDFReport(data: EnhancedExportData): Promi
     ['Pre-Record Time (seconds)', (data.formData.preRecordSeconds || 2).toString()],
     ['Post-Record Time (seconds)', (data.formData.postRecordSeconds || 5).toString()],
     ['Number of Servers', (data.formData.numberOfServers || 'N/A').toString()],
-    ['RAID Type', (data.formData.raidType || 'N/A').toString()],
     ['HDDs per Server', (data.formData.hddPerServer || 'N/A').toString()],
     ['Drive Capacity (TB)', (data.formData.driveCapacityTB || 'N/A').toString()],
     ['Server Model', data.formData.serverModel || 'N/A']
@@ -181,19 +173,9 @@ export async function generateEnhancedPDFReport(data: EnhancedExportData): Promi
   const storageData = [
     ['Metric', 'Value', 'Description'],
     [
-      'Usable Storage (TB)',
-      data.raidInfo ? data.raidInfo.usableCapacityTB.toFixed(2) : data.calculationResult.totalStorageTB.toFixed(2),
-      'Total space available after RAID overhead'
-    ],
-    [
-      'Raw Capacity Needed (TB)',
-      data.raidInfo ? data.raidInfo.rawCapacityTB.toFixed(2) : (data.calculationResult.totalStorageTB * 1.5).toFixed(2),
-      'Total disk capacity required before redundancy'
-    ],
-    [
-      'RAID Overhead',
-      data.raidInfo ? `${data.raidInfo.overheadPercent.toFixed(1)}%` : 'N/A',
-      data.raidInfo ? `Automatically calculated for ${data.formData.raidType}` : 'No RAID configured'
+      'Total Storage Required (TB)',
+      data.calculationResult.totalStorageTB.toFixed(2),
+      'Total storage space required including 20% overhead'
     ],
     ['Retention Days', data.formData.retentionDays.toString(), 'Duration for which recordings are stored'],
     [
@@ -221,50 +203,11 @@ export async function generateEnhancedPDFReport(data: EnhancedExportData): Promi
     yPosition = 20;
   }
   
-  // Section 4: RAID/ZFS Protection Details (if applicable)
-  if (data.raidInfo && data.formData.raidType) {
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('4. RAID/ZFS Protection Details', 20, yPosition);
-    yPosition += 8;
-    
-    const raidData = [
-      ['Parameter', 'Value'],
-      ['RAID Type', data.formData.raidType],
-      ['Number of Servers', (data.formData.numberOfServers || 1).toString()],
-      ['HDDs per Server', (data.formData.hddPerServer || 0).toString()],
-      ['Total HDDs', ((data.formData.numberOfServers || 1) * (data.formData.hddPerServer || 0)).toString()],
-      ['Drive Capacity (TB)', (data.formData.driveCapacityTB || 0).toString()],
-      ['Raw Capacity (TB)', data.raidInfo.rawCapacityTB.toFixed(2)],
-      ['Usable Capacity (TB)', data.raidInfo.usableCapacityTB.toFixed(2)],
-      ['RAID Overhead (%)', data.raidInfo.overheadPercent.toFixed(1)],
-      ['RAID Overhead (TB)', data.raidInfo.overheadTB.toFixed(2)]
-    ];
-    
-    callAutoTable({
-      startY: yPosition,
-      head: [raidData[0]],
-      body: raidData.slice(1),
-      theme: 'grid',
-      headStyles: { fillColor: primaryColor, textColor: 255 },
-      styles: { fontSize: 9 },
-      columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 90 } },
-      margin: { left: 20, right: 20 }
-    });
-    
-    yPosition = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 15 : yPosition + 50;
-    
-    if (yPosition > 270) {
-      doc.addPage();
-      yPosition = 20;
-    }
-  }
-  
-  // Section 5: Server Configuration Recommendations (if available)
+  // Section 4: Server Configuration Recommendations (if available)
   if (data.serverRecommendations) {
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('5. Server Configuration Recommendations', 20, yPosition);
+    doc.text('4. Server Configuration Recommendations', 20, yPosition);
     yPosition += 8;
     
     const serverData = [
@@ -318,7 +261,7 @@ export async function generateEnhancedPDFReport(data: EnhancedExportData): Promi
   
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text('6. Disclaimer', 20, yPosition);
+  doc.text('5. Disclaimer', 20, yPosition);
   yPosition += 8;
   
   doc.setFontSize(8);

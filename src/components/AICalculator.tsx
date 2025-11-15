@@ -5,6 +5,7 @@ import { AIRecommendationResponse } from "@/lib/types";
 import { calculateAccurateStorage } from "@/lib/storageCalculations";
 import { useAnalyticsTracker } from "@/hooks/useAnalyticsTracker";
 import { analyticsService } from "@/services/analyticsService";
+import { formatStorage } from "@/lib/storageFormatter";
 
 interface CalculatorForm {
   cameras: number | '';      // Allow empty string for UX
@@ -559,7 +560,7 @@ export default function AICalculator({ onInteraction, onAIRecommendations }: AIC
                 <li>Daily/Camera: {result.dailyStoragePerCameraGB.toFixed(2)} GB</li>
                 <li>Total Bitrate: {result.totalBitrateMbps.toFixed(1)} Mbps</li>
                 <li className="font-bold text-blue-600">
-                  Total Storage: {result.totalStorageTB.toFixed(2)} TB
+                  Total Storage: {formatStorage(result.totalStorageTB)}
                 </li>
                 <li className="text-xs text-gray-500">
                   (includes 20% overhead)
@@ -590,7 +591,7 @@ export default function AICalculator({ onInteraction, onAIRecommendations }: AIC
               <div>
                 <h5 className="font-semibold text-green-600 mb-2">2. Compression</h5>
                 <p className="text-sm text-slate-600">
-                  {formData.codec} = {formData.codec === 'H.265' ? '0.6x' : formData.codec === 'H.264+' ? '0.5x' : '1.0x'} reduction
+                  {formData.codec} = {formData.codec === 'H.265' ? '0.6x' : '1.0x'} reduction
                 </p>
                 <p className="text-xs text-slate-500 mt-1">
                   Adjusted: {result.adjustedBitrate.toFixed(2)} Mbps
@@ -614,7 +615,7 @@ export default function AICalculator({ onInteraction, onAIRecommendations }: AIC
               <p className="text-sm text-slate-700">
                 {typeof formData.cameras === 'number' ? formData.cameras : 0} cameras × {result.dailyStoragePerCameraGB.toFixed(2)} GB/day × {formData.retentionDays} days 
                 × 1.2 overhead = <span className="font-bold text-blue-600 text-lg">
-                  {result.totalStorageTB.toFixed(2)} TB
+                  {formatStorage(result.totalStorageTB)}
                 </span>
               </p>
             </div>

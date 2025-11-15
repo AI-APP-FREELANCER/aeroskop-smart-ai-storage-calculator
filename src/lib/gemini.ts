@@ -1,5 +1,4 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { calculateAccurateStorage } from './storageCalculations';
 import { AIRecommendationResponse, StorageRecommendation } from './types';
 
 // Initialize Gemini AI
@@ -69,58 +68,183 @@ const PRODUCT_SPECIFICATIONS = {
   }
 };
 
+// Product URL mapping
+const PRODUCT_URLS: Record<string, string> = {
+  'AeroFlex AF-1632 NVR': '/products/aeroflex-af-1632',
+  'AeroFlex AF-3264 NVR': '/products/aeroflex-af-3264',
+  'AeroFlex AF-64128 NVR': '/products/aeroflex-af-64128',
+  'Aeroskop Rhino ASK-SR212': '/products/rhino-ask-sr212',
+  'Aeroskop Rhino ASK-SR224': '/products/rhino-ask-sr224',
+  'AeroStor Nova-360': '/products/aerostor-nova-360'
+};
+
+// Helper function to get product URL
+function getProductUrl(productName: string): string {
+  return PRODUCT_URLS[productName] || '/products';
+}
+
 // System prompt for Gemini AI
 const SYSTEM_PROMPT = `
-You are a specialized AI assistant for surveillance camera storage recommendations and optimization.
+You are a specialized AI assistant for surveillance camera storage calculations and analysis.
 
 CRITICAL REQUIREMENTS:
-1. You MUST only recommend products from the Aeroskop catalog provided
-2. You MUST provide accurate storage calculations based on industry standards
-3. You MUST respond with a single best recommendation (not multiple tiers)
-4. You MUST format your response as valid JSON
+1. You MUST calculate storage requirements using the exact formulas provided below
+2. You MUST format your response as valid JSON
+3. You MUST include top 2 Aeroskop/Aeroflex product recommendations based on the calculated storage requirements
+4. You MUST NOT include system configuration recommendations
+5. You MUST return storage analysis calculations AND product recommendations
 
-AEROSKOP PRODUCT CATALOG:
-${JSON.stringify(PRODUCT_SPECIFICATIONS, null, 2)}
+RESOLUTION MEGAPIXEL (MP) REFERENCE TABLE:
+- 3840 x 2160 (4K): 8.29 MP
+- 3072 x 2048: 6.29 MP
+- 2592 x 1944: 5.04 MP
+- 2592 x 1520: 3.93 MP
+- 2560 x 1440: 3.69 MP
+- 2304 x 1296: 2.99 MP
+- 1920 x 1080 (1080p): 2.07 MP
+- 1280 x 720 (720p): 0.92 MP
 
-STORAGE CALCULATION FORMULA:
-- Base bitrate from industry standards table
-- Apply compression adjustment (H.265: 0.6x, H.264: 1.0x, H.264+: 0.5x, MJPEG: 4.0x)
-- Calculate daily storage per camera
-- Apply activity ratio and retention period
-- Add 20% overhead for system use
+Use these exact MP values when calculating bitrate or referencing resolution.
+
+STORAGE CALCULATION FORMULAS (USE THESE EXACT FORMULAS):
+
+Step 1: Determine Base Bitrate (Mbps)
+Use this bitrate lookup table based on resolution, FPS, and quality:
+- 720p (0.92 MP): 15fps (Low: 0.9, Medium: 1.2, High: 1.5), 30fps (Low: 1.2, Medium: 1.6, High: 2.0), 60fps (Low: 2.4, Medium: 3.2, High: 4.0)
+- 1080p (2.07 MP): 15fps (Low: 2.0, Medium: 2.5, High: 3.0), 30fps (Low: 3.0, Medium: 3.5, High: 4.0), 60fps (Low: 6.0, Medium: 7.0, High: 8.0)
+- 4MP: 15fps (Low: 3.0, Medium: 4.0, High: 5.0), 30fps (Low: 4.0, Medium: 5.0, High: 6.0), 60fps (Low: 8.0, Medium: 10.0, High: 12.0)
+- 4K (8.29 MP): 15fps (Low: 6.0, Medium: 8.0, High: 10.0), 30fps (Low: 8.0, Medium: 10.0, High: 12.0), 60fps (Low: 16.0, Medium: 20.0, High: 24.0)
+- 8K: 15fps (Low: 20.0, Medium: 25.0, High: 30.0), 30fps (Low: 30.0, Medium: 40.0, High: 50.0), 60fps (Low: 60.0, Medium: 80.0, High: 100.0)
+
+If custom_bitrate is provided, use that value directly. Otherwise, use the table above.
+If custom_fps is provided, scale the bitrate: baseBitrate * (custom_fps / 30)
+If fps differs from 30, scale: baseBitrate * (fps / 30)
+
+Step 2: Apply Compression Factor
+- H.265: multiply by 0.6
+- H.264: multiply by 1.0
+- MJPEG: multiply by 4.0
+adjusted_bitrate = baseBitrate * compressionFactor
+
+Step 3: Handle Motion Recording (if recording_mode is "motion")
+- Average motion event duration: 10 seconds
+- Effective percentage = activity_percent * ((pre_record_seconds + 10 + post_record_seconds) / 10)
+- Cap at 100%
+adjusted_motion_percent = min(100, activity_percent * timeMultiplier)
+
+Step 4: Calculate Daily Storage per Camera
+CRITICAL: Use 8 as the conversion divisor (NOT 8000)
+Reference calculation: 4 Mbps ÷ 8 = 0.5 MB/s
+
+Step 4a: Convert bitrate to bytes per second
+bitrate_mbps = adjusted_bitrate (in Mbps)
+bytes_per_second_mb = (bitrate_mbps × 10⁶) ÷ 8
+OR simplified: bytes_per_second_mb = bitrate_mbps ÷ 8
+
+Step 4b: Calculate per-day data
+seconds_per_day = 86400
+daily_storage_mb = bytes_per_second_mb × seconds_per_day
+OR simplified: daily_storage_mb = (adjusted_bitrate × 86400) / 8
+
+Step 4c: Apply motion activity as MULTIPLIER
+daily_storage_with_activity_mb = daily_storage_mb × (adjusted_motion_percent / 100)
+
+Step 4d: Convert to GB
+daily_storage_per_camera_gb = daily_storage_with_activity_mb / 1024
+
+Step 5: Calculate Total Storage
+storage_per_camera_mb = daily_storage_with_activity_mb * retention_days
+total_storage_mb = storage_per_camera_mb * cameras
+Convert MB to TB: total_storage_tb = (total_storage_mb / 1,024,000) * 1.2
+Note: 1,024,000 MB = 1 TB (using 1024 base), multiply by 1.2 for 20% overhead
+
+Step 6: Calculate Total Bitrate
+total_bitrate_mbps = adjusted_bitrate * cameras
+
+REFERENCE CALCULATION EXAMPLE (MUST MATCH THIS EXACTLY):
+1 camera, 1080p (2.07 MP), 25 fps, H.264, 4 Mbps, 24 hours/day, 1 day, 100% activity:
+- Bitrate: 4 Mbps
+- Convert to bytes: (4 × 10⁶) ÷ 8 = 0.5 MB/s
+- Per-day data: 0.5 MB/s × 86,400 s = 43,200 MB
+- Convert to GB: 43,200 MB ÷ 1024 = 42.19 GB
+- With 100% activity: 42.19 GB × 1.0 = 42.19 GB per camera per day
+
+ADDITIONAL CALCULATION EXAMPLE:
+If cameras=50, resolution=1080p (2.07 MP), fps=30, codec=H.265, quality=Medium, activity_percent=70, recording_hours_per_day=24, retention_days=30:
+- Base bitrate: 3.5 Mbps (from 1080p/30fps/Medium table)
+- Adjusted bitrate: 3.5 × 0.6 (H.265) = 2.1 Mbps
+- Convert to bytes: 2.1 ÷ 8 = 0.2625 MB/s
+- Daily storage MB: 0.2625 × 86,400 = 22,680 MB
+- With 70% activity as multiplier: 22,680 × 0.7 = 15,876 MB
+- Daily per camera GB: 15,876 / 1024 = 15.50 GB
+- For 30 days: 15,876 × 30 = 476,280 MB per camera
+- For 50 cameras: 476,280 × 50 = 23,814,000 MB
+- Convert to TB: 23,814,000 / 1,024,000 = 23.25 TB
+- With overhead: 23.25 × 1.2 = 27.90 TB
+
+AVAILABLE AEROSKOP/AEROFLEX PRODUCTS:
+1. "AeroFlex AF-1632 NVR" - 16-32 channels, 36 TB storage, Intel Core i5, 16GB RAM
+2. "AeroFlex AF-3264 NVR" - 32-64 channels, 72 TB storage, Intel Core i7, 32GB RAM
+3. "AeroFlex AF-64128 NVR" - 64-128 channels, 144 TB storage, Intel Core i9, 64GB RAM
+4. "Aeroskop Rhino ASK-SR212" - 250-350 cameras, 240 TB storage, Dual Xeon Silver, 64GB DDR5 ECC
+5. "Aeroskop Rhino ASK-SR224" - 350-400 cameras, 480 TB storage, Dual Xeon Silver, 128GB DDR5 ECC
+6. "AeroStor Nova-360" - Unlimited channels, 999 TB storage, Distributed Processing
+
+PRODUCT RECOMMENDATION RULES:
+- Recommend the TOP 2 best-fitting products from the list above
+- If 2 products are feasible and fit correctly, recommend both
+- If only 1 product fits well, recommend that product as the primary recommendation
+- Consider: camera count, storage requirements, and scalability needs
+- Products should match or exceed the calculated storage requirements
+- Prioritize AeroFlex products for smaller deployments (<128 cameras)
+- Prioritize Rhino products for larger deployments (>=128 cameras)
 
 RESPONSE FORMAT (JSON):
 {
-  "recommendation": {
-    "product_name": "Exact product name from catalog",
-    "product_model": "Model number",
-    "channel_capacity": "Channel capacity",
-    "storage_capacity_tb": "Storage capacity in TB",
-    "cpu": "CPU specification",
-    "ram": "RAM specification", 
-    "raid_support": "RAID support",
-    "suitable_for": ["Use case 1", "Use case 2"],
-    "why_recommended": "Detailed explanation of why this product is recommended",
-    "key_benefits": ["Benefit 1", "Benefit 2", "Benefit 3"]
-  },
   "calculations": {
-    "total_storage_tb": "Total storage required in TB",
-    "daily_storage_tb": "Daily storage in TB",
-    "daily_storage_per_camera_gb": "Daily storage per camera in GB",
-    "total_bitrate_mbps": "Total bitrate in Mbps",
-    "bitrate_per_camera": "Bitrate per camera in Mbps",
-    "retention_days": "Retention period in days",
-    "adjusted_bitrate": "Adjusted bitrate after compression",
-    "overhead_factor": "Overhead factor applied"
+    "total_storage_tb": <calculated number>,
+    "daily_storage_tb": <calculated number>,
+    "daily_storage_per_camera_gb": <calculated number>,
+    "total_bitrate_mbps": <calculated number>,
+    "bitrate_per_camera": <calculated number>,
+    "retention_days": <input value>,
+    "adjusted_bitrate": <calculated number>,
+    "overhead_factor": 1.2
   },
+  "top_products": [
+    {
+      "product_name": "AeroFlex AF-1632 NVR" or "Aeroskop Rhino ASK-SR212" etc.,
+      "product_model": "AF-1632" or "ASK-SR212" etc.,
+      "channel_capacity": "16-32 channels" etc.,
+      "storage_capacity_tb": 36,
+      "cpu": "Intel Core i5" etc.,
+      "ram": "16GB DDR4" etc.,
+      "why_recommended": "Detailed explanation why this product fits the requirements",
+      "pros": ["Benefit 1", "Benefit 2"],
+      "cons": ["Limitation 1", "Limitation 2"],
+      "suitable_for": ["Use case 1", "Use case 2"],
+      "key_benefits": ["Key feature 1", "Key feature 2"]
+    },
+    {
+      "product_name": "Second product name",
+      "product_model": "Model code",
+      ... (same structure as first product)
+    }
+  ],
   "optimization": {
     "suggestions": ["Optimization suggestion 1", "Optimization suggestion 2"],
     "insights": ["Technical insight 1", "Technical insight 2"]
   },
-  "summary": "Brief summary of the recommendation"
+  "summary": "Brief summary of the storage analysis results and product recommendations"
 }
 
-IMPORTANT: Only recommend products that can handle the specified camera count and storage requirements.
+CRITICAL REQUIREMENTS:
+- Calculate ALL values using the formulas above - do NOT use pre-calculated values
+- MUST include top_products array with 1-2 product recommendations
+- DO NOT include AI System Configuration Recommendations
+- Use 8 as the conversion divisor for bitrate to storage conversion (NOT 8000)
+- Motion activity acts as a multiplier on daily data calculation
+- Product recommendations must be from the available Aeroskop/Aeroflex products list above
 `;
 
 export async function generateGeminiStorageRecommendation(input: {
@@ -133,6 +257,10 @@ export async function generateGeminiStorageRecommendation(input: {
   recording_hours_per_day: number;
   retention_days: number;
   recording_mode: string;
+  pre_record_seconds?: number;
+  post_record_seconds?: number;
+  custom_bitrate?: number;
+  custom_fps?: number;
 }, analyticsContext?: {
   sessionId?: string;
   userId?: string;
@@ -160,30 +288,15 @@ export async function generateGeminiStorageRecommendation(input: {
       return generateMockRecommendations(input);
     }
 
-    // Calculate accurate storage requirements
+    // Build the prompt for Gemini with all parameters
     console.log('🧮 Gemini calculation input:', input);
     
-    const storageCalc = calculateAccurateStorage({
-      cameras: input.cameras,
-      resolution: input.resolution,
-      fps: input.fps,
-      codec: input.codec,
-      quality: input.quality,
-      recordingHoursPerDay: input.recording_hours_per_day,
-      activityPercent: input.activity_percent,
-      retentionDays: input.retention_days
-    });
-    
-    console.log('📊 Gemini storage calculation result:', storageCalc);
-    console.log('💾 Total storage TB from Gemini:', storageCalc.totalStorageTB);
-
-    // Build the prompt for Gemini
     const userPrompt = `
-Calculate storage requirements and recommend the best Aeroskop product for:
+Calculate storage requirements AND recommend top 2 Aeroskop/Aeroflex products:
 
 CAMERA PARAMETERS:
 - Number of Cameras: ${input.cameras}
-- Resolution: ${input.resolution}
+- Resolution: ${input.resolution}${input.resolution === '1080p' ? ' (2.07 MP)' : input.resolution === '720p' ? ' (0.92 MP)' : input.resolution === '4MP' ? ' (4 MP)' : input.resolution === '4K' ? ' (8.29 MP)' : ''}
 - Frame Rate: ${input.fps} FPS
 - Codec: ${input.codec}
 - Quality: ${input.quality}
@@ -191,14 +304,20 @@ CAMERA PARAMETERS:
 - Recording Hours/Day: ${input.recording_hours_per_day}
 - Retention Days: ${input.retention_days}
 - Recording Mode: ${input.recording_mode}
+${input.pre_record_seconds !== undefined ? `- Pre-record Seconds: ${input.pre_record_seconds}` : ''}
+${input.post_record_seconds !== undefined ? `- Post-record Seconds: ${input.post_record_seconds}` : ''}
+${input.custom_bitrate !== undefined && input.custom_bitrate > 0 ? `- Custom Bitrate: ${input.custom_bitrate} Mbps` : ''}
+${input.custom_fps !== undefined && input.custom_fps > 0 ? `- Custom FPS: ${input.custom_fps}` : ''}
 
-CALCULATED STORAGE REQUIREMENTS:
-- Total Storage Required: ${storageCalc.totalStorageTB.toFixed(2)} TB
-- Daily Storage: ${storageCalc.dailyStoragePerCameraGB.toFixed(2)} GB per camera
-- Total Bitrate: ${storageCalc.totalBitrateMbps.toFixed(2)} Mbps
-- Bitrate per Camera: ${storageCalc.bitratePerCamera.toFixed(2)} Mbps
-
-Please recommend the single most appropriate Aeroskop product and provide detailed reasoning.
+CRITICAL INSTRUCTIONS:
+- Use the exact formulas provided in the system prompt
+- Use 8 as the conversion divisor (NOT 8000)
+- Motion activity acts as a MULTIPLIER on daily data
+- MUST include top_products array with 1-2 best-fitting Aeroskop/Aeroflex products
+- If 2 products are feasible and fit correctly, recommend both
+- If only 1 product fits well, recommend that product
+- DO NOT include system configuration recommendations
+- Calculate everything from scratch using the provided parameters
 `;
 
     // Estimate input tokens (rough approximation)
@@ -221,7 +340,7 @@ Please recommend the single most appropriate Aeroskop product and provide detail
     requestEndTime = new Date();
 
     // Parse and validate the response
-    const aiResponse = validateAndFormatGeminiResponse(text, input, storageCalc);
+    const aiResponse = validateAndFormatGeminiResponse(text, input);
 
     // Capture analytics (non-blocking) - simplified for now
     console.log('📊 Gemini Analytics:', {
@@ -313,8 +432,7 @@ async function captureAnalytics(data: {
 
 function validateAndFormatGeminiResponse(
   responseText: string,
-  input: any,
-  storageCalc: any
+  input: any
 ): AIRecommendationResponse {
   try {
     // Extract JSON from response
@@ -326,44 +444,125 @@ function validateAndFormatGeminiResponse(
     const aiData = JSON.parse(jsonMatch[0]);
 
     // Validate required fields
-    if (!aiData.recommendation || !aiData.calculations) {
-      throw new Error('Invalid response structure');
+    if (!aiData.calculations) {
+      throw new Error('Invalid response structure - missing calculations');
     }
 
-    // Ensure product is from Aeroskop catalog
-    const validProducts = Object.keys(PRODUCT_SPECIFICATIONS) as Array<keyof typeof PRODUCT_SPECIFICATIONS>;
-    if (!validProducts.includes(aiData.recommendation.product_name as keyof typeof PRODUCT_SPECIFICATIONS)) {
-      // Find the best matching product based on storage requirements
-      const bestProduct = findBestProduct(storageCalc.totalStorageTB, input.cameras) as keyof typeof PRODUCT_SPECIFICATIONS;
-      const productSpec = PRODUCT_SPECIFICATIONS[bestProduct];
-      if (productSpec) {
-        aiData.recommendation = {
-          ...productSpec,
+    // Validate calculations are numbers
+    const calculations = {
+      total_storage_tb: Number(aiData.calculations.total_storage_tb) || 0,
+      daily_storage_tb: Number(aiData.calculations.daily_storage_tb) || 0,
+      daily_storage_per_camera_gb: Number(aiData.calculations.daily_storage_per_camera_gb) || 0,
+      total_bitrate_mbps: Number(aiData.calculations.total_bitrate_mbps) || 0,
+      bitrate_per_camera: Number(aiData.calculations.bitrate_per_camera) || 0,
+      retention_days: input.retention_days,
+      adjusted_bitrate: Number(aiData.calculations.adjusted_bitrate) || 0,
+      overhead_factor: Number(aiData.calculations.overhead_factor) || 1.2
+    };
+
+    // Parse product recommendations from Gemini
+    let topProducts: StorageRecommendation[] = [];
+    let primaryRecommendation: StorageRecommendation | null = null;
+
+    if (aiData.top_products && Array.isArray(aiData.top_products) && aiData.top_products.length > 0) {
+      // Map products and filter out duplicates by product_name
+      const productMap = new Map<string, StorageRecommendation>();
+      
+      aiData.top_products.forEach((product: any) => {
+        const productName = product.product_name || '';
+        // Skip if we already have this product
+        if (productMap.has(productName)) {
+          return;
+        }
+        
+        const productSpecs = PRODUCT_SPECIFICATIONS[productName as keyof typeof PRODUCT_SPECIFICATIONS];
+        
+        productMap.set(productName, {
+          product_name: productName,
+          product_model: product.product_model || productSpecs?.product_model || 'N/A',
+          product_image_url: `/images/products/${(product.product_model || productSpecs?.product_model || 'default').toLowerCase().replace(/\s+/g, '-')}.jpg`,
+          product_url: getProductUrl(productName),
+          channel_capacity: product.channel_capacity || productSpecs?.channel_capacity || 'N/A',
+          storage_capacity_tb: product.storage_capacity_tb || productSpecs?.storage_capacity_tb || 0,
+          cpu: product.cpu || productSpecs?.cpu || 'N/A',
+          ram: product.ram || productSpecs?.ram || 'N/A',
+          pros: product.pros || ['High performance', 'Reliable storage'],
+          cons: product.cons || [],
+          raid_support: product.raid_support || productSpecs?.raid_support || 'N/A',
+          suitable_for: product.suitable_for || productSpecs?.suitable_for || [],
+          why_recommended: product.why_recommended || `Recommended for your ${input.cameras} camera deployment`,
+          key_benefits: product.key_benefits || productSpecs?.key_features || []
+        });
+      });
+      
+      topProducts = Array.from(productMap.values());
+      primaryRecommendation = topProducts[0];
+    } else {
+      // Fallback: generate recommendations based on calculations
+      const bestProduct = findBestProduct(calculations.total_storage_tb, input.cameras) as keyof typeof PRODUCT_SPECIFICATIONS;
+      const secondBestProduct = findSecondBestProduct(calculations.total_storage_tb, input.cameras, bestProduct) as keyof typeof PRODUCT_SPECIFICATIONS;
+      
+      const productSpecs = PRODUCT_SPECIFICATIONS[bestProduct];
+      const secondProductSpecs = PRODUCT_SPECIFICATIONS[secondBestProduct];
+      
+      // Only add second product if it's different from the first
+      topProducts = [
+        {
           product_name: bestProduct,
-          why_recommended: `Recommended for ${input.cameras} cameras requiring ${storageCalc.totalStorageTB.toFixed(1)} TB storage`,
-          key_benefits: productSpec.key_features
-        };
+          product_model: productSpecs.product_model,
+          product_image_url: `/images/products/${productSpecs.product_model.toLowerCase().replace(/\s+/g, '-')}.jpg`,
+          product_url: getProductUrl(bestProduct),
+          channel_capacity: productSpecs.channel_capacity,
+          storage_capacity_tb: productSpecs.storage_capacity_tb,
+          cpu: productSpecs.cpu,
+          ram: productSpecs.ram,
+          pros: ['High performance', 'Reliable storage', 'Scalable solution'],
+          cons: ['Requires professional installation'],
+          raid_support: productSpecs.raid_support,
+          suitable_for: productSpecs.suitable_for,
+          why_recommended: `Perfect for your ${input.cameras} camera deployment requiring ${calculations.total_storage_tb.toFixed(1)} TB storage`,
+          key_benefits: productSpecs.key_features
+        }
+      ];
+      
+      // Only add second product if it's different from the first
+      if (secondBestProduct && secondBestProduct !== bestProduct) {
+        topProducts.push({
+          product_name: secondBestProduct,
+          product_model: secondProductSpecs.product_model,
+          product_image_url: `/images/products/${secondProductSpecs.product_model.toLowerCase().replace(/\s+/g, '-')}.jpg`,
+          product_url: getProductUrl(secondBestProduct),
+          channel_capacity: secondProductSpecs.channel_capacity,
+          storage_capacity_tb: secondProductSpecs.storage_capacity_tb,
+          cpu: secondProductSpecs.cpu,
+          ram: secondProductSpecs.ram,
+          pros: ['Good performance', 'Cost-effective'],
+          cons: ['May require expansion'],
+          raid_support: secondProductSpecs.raid_support,
+          suitable_for: secondProductSpecs.suitable_for,
+          why_recommended: `Alternative option for your ${input.cameras} camera deployment`,
+          key_benefits: secondProductSpecs.key_features
+        });
       }
+      
+      primaryRecommendation = topProducts[0];
     }
+
+    // Final deduplication: remove any duplicates by product_name
+    const uniqueProducts = topProducts.filter((product, index, self) =>
+      index === self.findIndex((p) => p.product_name === product.product_name)
+    );
 
     return {
       cached: false,
-      calculations: {
-        total_storage_tb: Number(aiData.calculations.total_storage_tb || storageCalc.totalStorageTB),
-        daily_storage_tb: Number(aiData.calculations.daily_storage_tb || (storageCalc.dailyStoragePerCameraGB * input.cameras / 1000)),
-        daily_storage_per_camera_gb: Number(aiData.calculations.daily_storage_per_camera_gb || storageCalc.dailyStoragePerCameraGB),
-        total_bitrate_mbps: Number(aiData.calculations.total_bitrate_mbps || storageCalc.totalBitrateMbps),
-        bitrate_per_camera: Number(aiData.calculations.bitrate_per_camera || storageCalc.bitratePerCamera),
-        retention_days: input.retention_days,
-        adjusted_bitrate: Number(aiData.calculations.adjusted_bitrate || storageCalc.adjustedBitrate),
-        overhead_factor: Number(aiData.calculations.overhead_factor || 1.2)
-      },
-      recommendation: aiData.recommendation,
+      calculations,
+      recommendation: primaryRecommendation,
+      top_products: uniqueProducts.length >= 2 ? uniqueProducts : (uniqueProducts.length === 1 ? uniqueProducts : undefined),
       optimization: aiData.optimization || {
         suggestions: ['Optimize compression settings', 'Consider motion-based recording'],
         insights: ['Storage requirements calculated using industry standards', 'Recommendation based on camera count and retention needs']
       },
-      summary: aiData.summary || `Recommended ${aiData.recommendation.product_name} for your ${input.cameras} camera deployment`,
+      summary: aiData.summary || `Storage analysis completed for ${input.cameras} camera deployment`,
       is_fallback: false,
       fallback_reason: undefined
     };
@@ -409,41 +608,32 @@ function findBestProduct(requiredStorageTB: number, cameraCount: number): string
 function generateMockRecommendations(input: any): AIRecommendationResponse {
   console.log('🧮 Mock calculation input:', input);
   
-  const storageCalc = calculateAccurateStorage({
-    cameras: input.cameras,
-    resolution: input.resolution,
-    fps: input.fps,
-    codec: input.codec,
-    quality: input.quality,
-    recordingHoursPerDay: input.recording_hours_per_day,
-    activityPercent: input.activity_percent,
-    retentionDays: input.retention_days
-  });
+  // Simple mock calculation for fallback (when API is not available)
+  // This is a basic estimation - real calculations should come from Gemini
+  const estimatedBitrate = 4.0; // Default estimate
+  const compressionFactor = input.codec === 'H.265' ? 0.6 : input.codec === 'H.264' ? 1.0 : 0.8;
+  const adjustedBitrate = estimatedBitrate * compressionFactor;
+  const dailyStorageMB = (adjustedBitrate * 3600 * input.recording_hours_per_day) / 8;
+  const dailyWithActivity = dailyStorageMB * (input.activity_percent / 100);
+  const totalStorageMB = (dailyWithActivity * input.retention_days * input.cameras) * 1.2;
+  const totalStorageTB = totalStorageMB / 1_000_000;
 
-  console.log('📊 Storage calculation result:', storageCalc);
-  console.log('💾 Total storage TB:', storageCalc.totalStorageTB);
+  console.log('📊 Mock storage calculation result:', { totalStorageTB });
 
-  const bestProduct = findBestProduct(storageCalc.totalStorageTB, input.cameras) as keyof typeof PRODUCT_SPECIFICATIONS;
-  const productSpecs = PRODUCT_SPECIFICATIONS[bestProduct];
+  const bestProduct = findBestProduct(totalStorageTB, input.cameras) as keyof typeof PRODUCT_SPECIFICATIONS;
+  const secondBestProduct = findSecondBestProduct(totalStorageTB, input.cameras, bestProduct) as keyof typeof PRODUCT_SPECIFICATIONS;
   
-  console.log('🏷️ Best product found:', bestProduct);
+  const productSpecs = PRODUCT_SPECIFICATIONS[bestProduct];
+  const secondProductSpecs = PRODUCT_SPECIFICATIONS[secondBestProduct];
+  
+  console.log('🏷️ Best products found:', bestProduct, secondBestProduct);
 
-  return {
-    cached: false,
-    calculations: {
-      total_storage_tb: storageCalc.totalStorageTB,
-      daily_storage_tb: storageCalc.dailyStoragePerCameraGB * input.cameras / 1000,
-      daily_storage_per_camera_gb: storageCalc.dailyStoragePerCameraGB,
-      total_bitrate_mbps: storageCalc.totalBitrateMbps,
-      bitrate_per_camera: storageCalc.bitratePerCamera,
-      retention_days: input.retention_days,
-      adjusted_bitrate: storageCalc.adjustedBitrate,
-      overhead_factor: 1.2
-    },
-    recommendation: {
+  const topProducts: StorageRecommendation[] = [
+    {
       product_name: bestProduct,
       product_model: productSpecs.product_model,
       product_image_url: `/images/products/${productSpecs.product_model.toLowerCase().replace(/\s+/g, '-')}.jpg`,
+      product_url: getProductUrl(bestProduct),
       channel_capacity: productSpecs.channel_capacity,
       storage_capacity_tb: productSpecs.storage_capacity_tb,
       cpu: productSpecs.cpu,
@@ -452,14 +642,45 @@ function generateMockRecommendations(input: any): AIRecommendationResponse {
       cons: ['Requires professional installation', 'Initial setup complexity'],
       raid_support: productSpecs.raid_support,
       suitable_for: productSpecs.suitable_for,
-      why_recommended: `Perfect for your ${input.cameras} camera deployment requiring ${storageCalc.totalStorageTB.toFixed(1)} TB storage with ${input.retention_days} days retention`,
+      why_recommended: `Perfect for your ${input.cameras} camera deployment requiring ${totalStorageTB.toFixed(1)} TB storage with ${input.retention_days} days retention`,
       key_benefits: productSpecs.key_features
     },
+    {
+      product_name: secondBestProduct,
+      product_model: secondProductSpecs.product_model,
+      product_image_url: `/images/products/${secondProductSpecs.product_model.toLowerCase().replace(/\s+/g, '-')}.jpg`,
+      product_url: getProductUrl(secondBestProduct),
+      channel_capacity: secondProductSpecs.channel_capacity,
+      storage_capacity_tb: secondProductSpecs.storage_capacity_tb,
+      cpu: secondProductSpecs.cpu,
+      ram: secondProductSpecs.ram,
+      pros: ['Good performance', 'Reliable storage', 'Cost-effective'],
+      cons: ['May require expansion', 'Limited scalability'],
+      raid_support: secondProductSpecs.raid_support,
+      suitable_for: secondProductSpecs.suitable_for,
+      why_recommended: `Alternative option for your ${input.cameras} camera deployment`,
+      key_benefits: secondProductSpecs.key_features
+    }
+  ];
+
+  return {
+    cached: false,
+    calculations: {
+      total_storage_tb: totalStorageTB,
+      daily_storage_tb: (dailyWithActivity * input.cameras) / 1000,
+      daily_storage_per_camera_gb: dailyWithActivity / 1000,
+      total_bitrate_mbps: adjustedBitrate * input.cameras,
+      bitrate_per_camera: adjustedBitrate,
+      retention_days: input.retention_days,
+      adjusted_bitrate: adjustedBitrate,
+      overhead_factor: 1.2
+    },
+    recommendation: topProducts[0],
+    top_products: topProducts,
     optimization: {
       suggestions: [
         'Consider H.265 compression for 50% storage savings',
-        'Implement motion-based recording to reduce storage needs',
-        'Use RAID 5 for optimal performance and redundancy'
+        'Implement motion-based recording to reduce storage needs'
       ],
       insights: [
         'Storage calculated using industry-standard bitrate tables',
@@ -467,8 +688,40 @@ function generateMockRecommendations(input: any): AIRecommendationResponse {
         'Includes 20% overhead for system metadata and indexing'
       ]
     },
-    summary: `Recommended ${bestProduct} for your ${input.cameras} camera surveillance system`,
+    summary: `Recommended ${bestProduct} and ${secondBestProduct} for your ${input.cameras} camera surveillance system`,
     is_fallback: true,
     fallback_reason: 'Gemini API not configured - using intelligent mock recommendations'
   };
+}
+
+function findSecondBestProduct(requiredStorageTB: number, cameraCount: number, excludeProduct: string): string {
+  const products = Object.entries(PRODUCT_SPECIFICATIONS);
+  
+  // Find products that can handle the requirements, excluding the best product
+  const suitableProducts = products.filter(([name, specs]) => {
+    if (name === excludeProduct) return false;
+    
+    const maxCameras = parseInt(specs.channel_capacity.split('-').pop() || '0');
+    const minCameras = parseInt(specs.channel_capacity.split('-')[0] || '0');
+    
+    const cameraMatch = (cameraCount >= minCameras && cameraCount <= maxCameras) || 
+                       (cameraCount > maxCameras && cameraCount <= maxCameras * 1.2);
+    const storageMatch = specs.storage_capacity_tb >= requiredStorageTB * 0.5;
+    
+    return cameraMatch && storageMatch;
+  });
+
+  if (suitableProducts.length === 0) {
+    // If no exact match, find the closest product by storage capacity (excluding best)
+    const sortedByStorage = products
+      .filter(([name]) => name !== excludeProduct)
+      .sort((a, b) => 
+        Math.abs(a[1].storage_capacity_tb - requiredStorageTB) - 
+        Math.abs(b[1].storage_capacity_tb - requiredStorageTB)
+      );
+    return sortedByStorage[0]?.[0] || excludeProduct;
+  }
+
+  // Return the second most cost-effective option
+  return suitableProducts[0][0];
 }

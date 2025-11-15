@@ -149,7 +149,6 @@ export function calculateAccurateStorage(input: {
   const compressionFactor = {
     'H.265': 0.6,
     'H.264': 1.0,
-    'H.264+': 0.5,
     'MJPEG': 4.0
   }[input.codec] || 1.0;
   

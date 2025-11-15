@@ -170,6 +170,7 @@ export interface StorageRecommendation {
   product_name: string;
   product_model: string;
   product_image_url: string;
+  product_url?: string; // Link to product page
   channel_capacity: string;
   storage_capacity_tb: number;
   cpu: string;
@@ -186,7 +187,8 @@ export interface AIRecommendationResponse {
   cached: boolean;
   is_fallback?: boolean; // NEW: Indicates this is a fallback response
   fallback_reason?: string; // NEW: Why fallback was used
-  recommendation: StorageRecommendation; // Single recommended solution
+  recommendation: StorageRecommendation; // Primary recommended solution (for backward compatibility)
+  top_products?: StorageRecommendation[]; // NEW: Top 2 product recommendations
   calculations: StorageCalculations;
   optimization: {
     suggestions: string[];
@@ -259,7 +261,6 @@ export interface CalculatorForm {
   customFps?: number;
   customBitrate?: number;
   numberOfServers?: number;
-  raidType?: 'RAID-1' | 'RAID-5' | 'RAID-6' | 'RAID-Z1' | 'RAID-Z2';
   hddPerServer?: number;
   driveCapacityTB?: number;
   serverModel?: string;
