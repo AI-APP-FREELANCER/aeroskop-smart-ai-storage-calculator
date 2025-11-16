@@ -84,168 +84,129 @@ function getProductUrl(productName: string): string {
 }
 
 // System prompt for Gemini AI
-const SYSTEM_PROMPT = `
-You are a specialized AI assistant for surveillance camera storage calculations and analysis.
+const SYSTEM_PROMPT = `You are a specialized AI assistant for surveillance camera storage calculations and analysis. Your primary goal is to provide accurate, slightly generous storage recommendations based on industry-standard formulas.
 
 CRITICAL REQUIREMENTS:
-1. You MUST calculate storage requirements using the exact formulas provided below
-2. You MUST format your response as valid JSON
-3. You MUST include top 2 Aeroskop/Aeroflex product recommendations based on the calculated storage requirements
-4. You MUST NOT include system configuration recommendations
-5. You MUST return storage analysis calculations AND product recommendations
+You MUST calculate storage requirements using the exact formulas provided below.
+You MUST format your response as valid JSON, strictly following the RESPONSE FORMAT defined below.
+You MUST include the single best Aeroskop/Aeroflex product recommendation based on the calculated storage requirements.
+You MUST NOT include system configuration recommendations.
 
 RESOLUTION MEGAPIXEL (MP) REFERENCE TABLE:
-- 3840 x 2160 (4K): 8.29 MP
-- 3072 x 2048: 6.29 MP
-- 2592 x 1944: 5.04 MP
-- 2592 x 1520: 3.93 MP
-- 2560 x 1440: 3.69 MP
-- 2304 x 1296: 2.99 MP
-- 1920 x 1080 (1080p): 2.07 MP
-- 1280 x 720 (720p): 0.92 MP
-
-Use these exact MP values when calculating bitrate or referencing resolution.
+3840 x 2160 (4K): 8.29 MP
+3072 x 2048: 6.29 MP
+2592 x 1944: 5.04 MP
+2592 x 1520: 3.93 MP
+2560 x 1440: 3.69 MP
+2304 x 1296: 2.99 MP
+1920 x 1080 (1080p): 2.07 MP
+1280 x 720 (720p): 0.92 MP
 
 STORAGE CALCULATION FORMULAS (USE THESE EXACT FORMULAS):
 
 Step 1: Determine Base Bitrate (Mbps)
 Use this bitrate lookup table based on resolution, FPS, and quality:
-- 720p (0.92 MP): 15fps (Low: 0.9, Medium: 1.2, High: 1.5), 30fps (Low: 1.2, Medium: 1.6, High: 2.0), 60fps (Low: 2.4, Medium: 3.2, High: 4.0)
-- 1080p (2.07 MP): 15fps (Low: 2.0, Medium: 2.5, High: 3.0), 30fps (Low: 3.0, Medium: 3.5, High: 4.0), 60fps (Low: 6.0, Medium: 7.0, High: 8.0)
-- 4MP: 15fps (Low: 3.0, Medium: 4.0, High: 5.0), 30fps (Low: 4.0, Medium: 5.0, High: 6.0), 60fps (Low: 8.0, Medium: 10.0, High: 12.0)
-- 4K (8.29 MP): 15fps (Low: 6.0, Medium: 8.0, High: 10.0), 30fps (Low: 8.0, Medium: 10.0, High: 12.0), 60fps (Low: 16.0, Medium: 20.0, High: 24.0)
-- 8K: 15fps (Low: 20.0, Medium: 25.0, High: 30.0), 30fps (Low: 30.0, Medium: 40.0, High: 50.0), 60fps (Low: 60.0, Medium: 80.0, High: 100.0)
+720p (0.92 MP): 15fps (Low: 0.9, Medium: 1.2, High: 1.5), 30fps (Low: 1.2, Medium: 1.6, High: 2.0), 60fps (Low: 2.4, Medium: 3.2, High: 4.0)
+1080p (2.07 MP): 15fps (Low: 2.0, Medium: 2.5, High: 3.0), 30fps (Low: 3.0, Medium: 3.5, High: 4.0), 60fps (Low: 6.0, Medium: 7.0, High: 8.0)
+4MP: 15fps (Low: 3.0, Medium: 4.0, High: 5.0), 30fps (Low: 4.0, Medium: 5.0, High: 6.0), 60fps (Low: 8.0, Medium: 10.0, High: 12.0)
+4K (8.29 MP): 15fps (Low: 6.0, Medium: 8.0, High: 10.0), 30fps (Low: 8.0, Medium: 10.0, High: 12.0), 60fps (Low: 16.0, Medium: 20.0, High: 24.0)
+8K: 15fps (Low: 20.0, Medium: 25.0, High: 30.0), 30fps (Low: 30.0, Medium: 40.0, High: 50.0), 60fps (Low: 60.0, Medium: 80.0, High: 100.0)
 
 If custom_bitrate is provided, use that value directly. Otherwise, use the table above.
 If custom_fps is provided, scale the bitrate: baseBitrate * (custom_fps / 30)
 If fps differs from 30, scale: baseBitrate * (fps / 30)
 
 Step 2: Apply Compression Factor
-- H.265: multiply by 0.6
-- H.264: multiply by 1.0
-- MJPEG: multiply by 4.0
+H.265: multiply by 0.6
+H.264: multiply by 1.0
+MJPEG: multiply by 4.0
 adjusted_bitrate = baseBitrate * compressionFactor
 
 Step 3: Handle Motion Recording (if recording_mode is "motion")
-- Average motion event duration: 10 seconds
-- Effective percentage = activity_percent * ((pre_record_seconds + 10 + post_record_seconds) / 10)
-- Cap at 100%
+Average motion event duration: 10 seconds
+Effective percentage = activity_percent * ((pre_record_seconds + 10 + post_record_seconds) / 10)
+Cap at 100%
 adjusted_motion_percent = min(100, activity_percent * timeMultiplier)
 
 Step 4: Calculate Daily Storage per Camera
-CRITICAL: Use 8 as the conversion divisor (NOT 8000)
-Reference calculation: 4 Mbps ÷ 8 = 0.5 MB/s
+CRITICAL: Convert time using the input recording_hours_per_day.
+seconds_to_record = recording_hours_per_day * 3600
 
-Step 4a: Convert bitrate to bytes per second
-bitrate_mbps = adjusted_bitrate (in Mbps)
-bytes_per_second_mb = (bitrate_mbps × 10⁶) ÷ 8
-OR simplified: bytes_per_second_mb = bitrate_mbps ÷ 8
+Step 4a: Convert bitrate to MB/second
+bytes_per_second_mb = adjusted_bitrate (in Mbps) / 8
 
 Step 4b: Calculate per-day data
-seconds_per_day = 86400
-daily_storage_mb = bytes_per_second_mb × seconds_per_day
-OR simplified: daily_storage_mb = (adjusted_bitrate × 86400) / 8
+daily_storage_mb = bytes_per_second_mb * seconds_to_record
 
 Step 4c: Apply motion activity as MULTIPLIER
-daily_storage_with_activity_mb = daily_storage_mb × (adjusted_motion_percent / 100)
+daily_storage_with_activity_mb = daily_storage_mb * (adjusted_motion_percent / 100)
 
 Step 4d: Convert to GB
 daily_storage_per_camera_gb = daily_storage_with_activity_mb / 1024
 
-Step 5: Calculate Total Storage
-storage_per_camera_mb = daily_storage_with_activity_mb * retention_days
-total_storage_mb = storage_per_camera_mb * cameras
-Convert MB to TB: total_storage_tb = (total_storage_mb / 1,024,000) * 1.2
-Note: 1,024,000 MB = 1 TB (using 1024 base), multiply by 1.2 for 20% overhead
+Step 5: Calculate Total Usable Storage
+total_storage_mb = daily_storage_with_activity_mb * retention_days * cameras
+Convert MB to TB: total_storage_tb = total_storage_mb / 1048576 (Note: 1024 * 1024)
 
-Step 6: Calculate Total Bitrate
+Step 6: Apply Safety Margin (CRITICAL)
+For customer satisfaction, you MUST round the final total_storage_tb value UP to the nearest whole number (integer).
+
+Step 7: Calculate Total Bitrate
 total_bitrate_mbps = adjusted_bitrate * cameras
 
 REFERENCE CALCULATION EXAMPLE (MUST MATCH THIS EXACTLY):
 1 camera, 1080p (2.07 MP), 25 fps, H.264, 4 Mbps, 24 hours/day, 1 day, 100% activity:
-- Bitrate: 4 Mbps
-- Convert to bytes: (4 × 10⁶) ÷ 8 = 0.5 MB/s
-- Per-day data: 0.5 MB/s × 86,400 s = 43,200 MB
-- Convert to GB: 43,200 MB ÷ 1024 = 42.19 GB
-- With 100% activity: 42.19 GB × 1.0 = 42.19 GB per camera per day
-
-ADDITIONAL CALCULATION EXAMPLE:
-If cameras=50, resolution=1080p (2.07 MP), fps=30, codec=H.265, quality=Medium, activity_percent=70, recording_hours_per_day=24, retention_days=30:
-- Base bitrate: 3.5 Mbps (from 1080p/30fps/Medium table)
-- Adjusted bitrate: 3.5 × 0.6 (H.265) = 2.1 Mbps
-- Convert to bytes: 2.1 ÷ 8 = 0.2625 MB/s
-- Daily storage MB: 0.2625 × 86,400 = 22,680 MB
-- With 70% activity as multiplier: 22,680 × 0.7 = 15,876 MB
-- Daily per camera GB: 15,876 / 1024 = 15.50 GB
-- For 30 days: 15,876 × 30 = 476,280 MB per camera
-- For 50 cameras: 476,280 × 50 = 23,814,000 MB
-- Convert to TB: 23,814,000 / 1,024,000 = 23.25 TB
-- With overhead: 23.25 × 1.2 = 27.90 TB
+Bitrate: 4 Mbps (adjusted)
+Seconds to record: 24 * 3600 = 86400 s
+Convert to MB/s: 4 Mbps ÷ 8 = 0.5 MB/s
+Daily storage MB: 0.5 MB/s × 86,400 s = 43,200 MB
+Convert to GB: 43,200 MB ÷ 1024 = 42.19 GB
+Total Storage (1 day, 1 cam): 43,200 MB
+Convert to TB: 43,200 / 1048576 = 0.0412 TB
+Safety Margin (Round up): 1 TB (Result must be at least 1 TB for usable storage)
 
 AVAILABLE AEROSKOP/AEROFLEX PRODUCTS:
-1. "AeroFlex AF-1632 NVR" - 16-32 channels, 36 TB storage, Intel Core i5, 16GB RAM
-2. "AeroFlex AF-3264 NVR" - 32-64 channels, 72 TB storage, Intel Core i7, 32GB RAM
-3. "AeroFlex AF-64128 NVR" - 64-128 channels, 144 TB storage, Intel Core i9, 64GB RAM
-4. "Aeroskop Rhino ASK-SR212" - 250-350 cameras, 240 TB storage, Dual Xeon Silver, 64GB DDR5 ECC
-5. "Aeroskop Rhino ASK-SR224" - 350-400 cameras, 480 TB storage, Dual Xeon Silver, 128GB DDR5 ECC
-6. "AeroStor Nova-360" - Unlimited channels, 999 TB storage, Distributed Processing
+"AeroFlex AF-1632 NVR" - 16-32 channels, 36 TB storage, Intel Core i5, 16GB RAM
+"AeroFlex AF-3264 NVR" - 32-64 channels, 72 TB storage, Intel Core i7, 32GB RAM
+"AeroFlex AF-64128 NVR" - 64-128 channels, 144 TB storage, Intel Core i9, 64GB RAM
+"Aeroskop Rhino ASK-SR212" - 250-350 cameras, 240 TB storage, Dual Xeon Silver, 64GB DDR5 ECC
+"Aeroskop Rhino ASK-SR224" - 350-400 cameras, 480 TB storage, Dual Xeon Silver, 128GB DDR5 ECC
+"AeroStor Nova-360" - Unlimited channels, 999 TB storage, Distributed Processing
 
 PRODUCT RECOMMENDATION RULES:
-- Recommend the TOP 2 best-fitting products from the list above
-- If 2 products are feasible and fit correctly, recommend both
-- If only 1 product fits well, recommend that product as the primary recommendation
-- Consider: camera count, storage requirements, and scalability needs
-- Products should match or exceed the calculated storage requirements
-- Prioritize AeroFlex products for smaller deployments (<128 cameras)
-- Prioritize Rhino products for larger deployments (>=128 cameras)
+Recommend the SINGLE best-fitting product from the list above.
+The product should match or exceed the Total Usable Storage (rounded up) and the camera count.
+Prioritize AeroFlex products for smaller deployments (<128 cameras).
+Prioritize Rhino products for larger deployments (>=128 cameras).
+Choose the most cost-effective option that meets all requirements.
 
 RESPONSE FORMAT (JSON):
 {
   "calculations": {
-    "total_storage_tb": <calculated number>,
-    "daily_storage_tb": <calculated number>,
-    "daily_storage_per_camera_gb": <calculated number>,
+    "total_usable_storage_tb": <calculated total storage, rounded UP to the nearest integer TB>,
+    "daily_storage_per_camera_gb": <calculated GB value, to two decimal places>,
     "total_bitrate_mbps": <calculated number>,
-    "bitrate_per_camera": <calculated number>,
+    "bitrate_per_camera": <input custom_bitrate or calculated adjusted_bitrate>,
     "retention_days": <input value>,
-    "adjusted_bitrate": <calculated number>,
-    "overhead_factor": 1.2
+    "adjusted_bitrate": <calculated adjusted_bitrate>
   },
   "top_products": [
     {
-      "product_name": "AeroFlex AF-1632 NVR" or "Aeroskop Rhino ASK-SR212" etc.,
-      "product_model": "AF-1632" or "ASK-SR212" etc.,
-      "channel_capacity": "16-32 channels" etc.,
-      "storage_capacity_tb": 36,
-      "cpu": "Intel Core i5" etc.,
-      "ram": "16GB DDR4" etc.,
-      "why_recommended": "Detailed explanation why this product fits the requirements",
-      "pros": ["Benefit 1", "Benefit 2"],
-      "cons": ["Limitation 1", "Limitation 2"],
-      "suitable_for": ["Use case 1", "Use case 2"],
-      "key_benefits": ["Key feature 1", "Key feature 2"]
-    },
-    {
-      "product_name": "Second product name",
-      "product_model": "Model code",
-      ... (same structure as first product)
+      "product_name": "Product Name",
+      "product_model": "Model Code",
+      "channel_capacity": "Capacity Range",
+      "storage_capacity_tb": <TB capacity from list>,
+      "why_recommended": "Detailed explanation why this product is the best match for the calculated storage and camera count requirements."
     }
   ],
-  "optimization": {
-    "suggestions": ["Optimization suggestion 1", "Optimization suggestion 2"],
-    "insights": ["Technical insight 1", "Technical insight 2"]
-  },
-  "summary": "Brief summary of the storage analysis results and product recommendations"
+  "summary": "Brief summary of the storage analysis results and the recommended product."
 }
 
-CRITICAL REQUIREMENTS:
-- Calculate ALL values using the formulas above - do NOT use pre-calculated values
-- MUST include top_products array with 1-2 product recommendations
-- DO NOT include AI System Configuration Recommendations
-- Use 8 as the conversion divisor for bitrate to storage conversion (NOT 8000)
-- Motion activity acts as a multiplier on daily data calculation
-- Product recommendations must be from the available Aeroskop/Aeroflex products list above
-`;
+CRITICAL INSTRUCTIONS:
+You MUST use the recording_hours_per_day input variable in your calculation (Step 4).
+You MUST use 1,048,576 as the divisor for MB to TB conversion (1024 * 1024).
+You MUST round the final total_usable_storage_tb value UP to the nearest whole integer TB for the calculation and product recommendation.
+DO NOT include system configuration recommendations.`;
 
 export async function generateGeminiStorageRecommendation(input: {
   cameras: number;
@@ -292,32 +253,45 @@ export async function generateGeminiStorageRecommendation(input: {
     console.log('🧮 Gemini calculation input:', input);
     
     const userPrompt = `
-Calculate storage requirements AND recommend top 2 Aeroskop/Aeroflex products:
+Calculate storage requirements AND recommend the single best Aeroskop/Aeroflex product:
 
 CAMERA PARAMETERS:
-- Number of Cameras: ${input.cameras}
-- Resolution: ${input.resolution}${input.resolution === '1080p' ? ' (2.07 MP)' : input.resolution === '720p' ? ' (0.92 MP)' : input.resolution === '4MP' ? ' (4 MP)' : input.resolution === '4K' ? ' (8.29 MP)' : ''}
-- Frame Rate: ${input.fps} FPS
-- Codec: ${input.codec}
-- Quality: ${input.quality}
-- Activity Level: ${input.activity_percent}%
-- Recording Hours/Day: ${input.recording_hours_per_day}
-- Retention Days: ${input.retention_days}
-- Recording Mode: ${input.recording_mode}
-${input.pre_record_seconds !== undefined ? `- Pre-record Seconds: ${input.pre_record_seconds}` : ''}
-${input.post_record_seconds !== undefined ? `- Post-record Seconds: ${input.post_record_seconds}` : ''}
-${input.custom_bitrate !== undefined && input.custom_bitrate > 0 ? `- Custom Bitrate: ${input.custom_bitrate} Mbps` : ''}
-${input.custom_fps !== undefined && input.custom_fps > 0 ? `- Custom FPS: ${input.custom_fps}` : ''}
+
+Number of Cameras: ${input.cameras}
+Resolution: ${input.resolution}${input.resolution === '1080p' ? ' (2.07 MP)' : input.resolution === '720p' ? ' (0.92 MP)' : input.resolution === '4MP' ? ' (4 MP)' : input.resolution === '4K' ? ' (8.29 MP)' : ''}
+Frame Rate: ${input.fps} FPS
+Codec: ${input.codec}
+Quality: ${input.quality}
+Activity Level: ${input.activity_percent}%
+Recording Hours/Day: ${input.recording_hours_per_day}
+Retention Days: ${input.retention_days}
+Recording Mode: ${input.recording_mode}
+${input.custom_bitrate !== undefined && input.custom_bitrate > 0 ? `Custom Bitrate: ${input.custom_bitrate} Mbps` : ''}
+${input.custom_fps !== undefined && input.custom_fps > 0 ? `Custom FPS: ${input.custom_fps}` : ''}
+${input.pre_record_seconds !== undefined ? `Pre-record Seconds: ${input.pre_record_seconds}` : ''}
+${input.post_record_seconds !== undefined ? `Post-record Seconds: ${input.post_record_seconds}` : ''}
 
 CRITICAL INSTRUCTIONS:
-- Use the exact formulas provided in the system prompt
-- Use 8 as the conversion divisor (NOT 8000)
-- Motion activity acts as a MULTIPLIER on daily data
-- MUST include top_products array with 1-2 best-fitting Aeroskop/Aeroflex products
-- If 2 products are feasible and fit correctly, recommend both
-- If only 1 product fits well, recommend that product
-- DO NOT include system configuration recommendations
-- Calculate everything from scratch using the provided parameters
+
+Use the exact formulas provided in the system prompt.
+
+GUARDRAIL: If you receive a value of 0 for Number of Cameras, Custom Bitrate, Activity Level, or Retention Days, you MUST treat that value as 1 for the purpose of calculation. This prevents a final result of 0.
+
+CRITICAL: Use recording_hours_per_day (${input.recording_hours_per_day}) in Step 4 calculation: seconds_to_record = ${input.recording_hours_per_day} * 3600
+
+Use 1,048,576 (1024 * 1024) for MB to TB conversion.
+
+Round the final total_usable_storage_tb UP to the nearest whole integer TB.
+
+Motion activity acts as a MULTIPLIER on daily data.
+
+MUST include top_products array with exactly 1 best-fitting Aeroskop/Aeroflex product.
+
+Recommend the single most suitable product that best matches the requirements.
+
+DO NOT include system configuration recommendations.
+
+Calculate all values from scratch using the provided parameters.
 `;
 
     // Estimate input tokens (rough approximation)
@@ -333,6 +307,13 @@ CRITICAL INSTRUCTIONS:
     const response = await result.response;
     const text = response.text();
 
+    // Log raw response for debugging
+    console.log('📥 Raw Gemini Response:', {
+      textLength: text.length,
+      textPreview: text.substring(0, 500),
+      fullText: text
+    });
+
     // Estimate output tokens
     tokensOutput = Math.ceil(text.length / 4);
     tokensTotal = tokensInput + tokensOutput;
@@ -341,6 +322,14 @@ CRITICAL INSTRUCTIONS:
 
     // Parse and validate the response
     const aiResponse = validateAndFormatGeminiResponse(text, input);
+    
+    // Log parsed response for debugging
+    console.log('✅ Parsed AI Response:', {
+      total_storage_tb: aiResponse.calculations.total_storage_tb,
+      total_usable_storage_tb: aiResponse.calculations.total_usable_storage_tb,
+      daily_storage_per_camera_gb: aiResponse.calculations.daily_storage_per_camera_gb,
+      calculations: aiResponse.calculations
+    });
 
     // Capture analytics (non-blocking) - simplified for now
     console.log('📊 Gemini Analytics:', {
@@ -435,13 +424,27 @@ function validateAndFormatGeminiResponse(
   input: any
 ): AIRecommendationResponse {
   try {
+    console.log('🔍 Parsing Gemini response...', {
+      responseLength: responseText.length,
+      responsePreview: responseText.substring(0, 300)
+    });
+    
     // Extract JSON from response
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
+      console.error('❌ No JSON found in response. Full response:', responseText);
       throw new Error('No JSON found in response');
     }
 
+    console.log('📋 Extracted JSON:', jsonMatch[0].substring(0, 500));
+    
     const aiData = JSON.parse(jsonMatch[0]);
+    console.log('✅ Parsed JSON data:', {
+      hasCalculations: !!aiData.calculations,
+      calculations: aiData.calculations,
+      total_usable_storage_tb: aiData.calculations?.total_usable_storage_tb,
+      total_storage_tb: aiData.calculations?.total_storage_tb
+    });
 
     // Validate required fields
     if (!aiData.calculations) {
@@ -449,16 +452,61 @@ function validateAndFormatGeminiResponse(
     }
 
     // Validate calculations are numbers
+    // Support both old format (total_storage_tb) and new format (total_usable_storage_tb)
+    let totalStorage = aiData.calculations.total_usable_storage_tb !== undefined 
+      ? Number(aiData.calculations.total_usable_storage_tb)
+      : Number(aiData.calculations.total_storage_tb) || 0;
+    
+    const dailyStoragePerCameraGB = Number(aiData.calculations.daily_storage_per_camera_gb) || 0;
+    const adjustedBitrate = Number(aiData.calculations.adjusted_bitrate) || 0;
+    const totalBitrate = Number(aiData.calculations.total_bitrate_mbps) || 0;
+    const bitratePerCamera = Number(aiData.calculations.bitrate_per_camera) || 0;
+    
+    // Safety check: If storage is 0 or invalid, recalculate from parameters
+    if (totalStorage === 0 || isNaN(totalStorage)) {
+      console.warn('⚠️ Gemini returned 0 or invalid storage. Recalculating from parameters...', {
+        totalStorage,
+        dailyStoragePerCameraGB,
+        adjustedBitrate,
+        input
+      });
+      
+      // Recalculate using the formulas
+      const effectiveBitrate = input.custom_bitrate || adjustedBitrate || 4.0;
+      const compressionFactor = input.codec === 'H.265' ? 0.6 : input.codec === 'H.264' ? 1.0 : 0.8;
+      const finalBitrate = effectiveBitrate * compressionFactor;
+      const secondsToRecord = input.recording_hours_per_day * 3600;
+      const dailyStorageMB = (finalBitrate * secondsToRecord) / 8;
+      const dailyWithActivity = dailyStorageMB * (input.activity_percent / 100);
+      const totalStorageMB = dailyWithActivity * input.retention_days * input.cameras;
+      totalStorage = Math.ceil(totalStorageMB / 1_048_576); // Round up to nearest TB
+      
+      console.log('✅ Recalculated storage:', {
+        effectiveBitrate,
+        finalBitrate,
+        secondsToRecord,
+        dailyStorageMB,
+        dailyWithActivity,
+        totalStorageMB,
+        totalStorage
+      });
+    }
+    
     const calculations = {
-      total_storage_tb: Number(aiData.calculations.total_storage_tb) || 0,
-      daily_storage_tb: Number(aiData.calculations.daily_storage_tb) || 0,
-      daily_storage_per_camera_gb: Number(aiData.calculations.daily_storage_per_camera_gb) || 0,
-      total_bitrate_mbps: Number(aiData.calculations.total_bitrate_mbps) || 0,
-      bitrate_per_camera: Number(aiData.calculations.bitrate_per_camera) || 0,
+      total_storage_tb: totalStorage, // Keep for backward compatibility
+      total_usable_storage_tb: totalStorage, // New field name
+      daily_storage_tb: 0, // Removed from new format, calculate if needed
+      daily_storage_per_camera_gb: dailyStoragePerCameraGB || (totalStorage > 0 ? (totalStorage * 1024) / (input.cameras * input.retention_days) : 0),
+      total_bitrate_mbps: totalBitrate || (adjustedBitrate * input.cameras),
+      bitrate_per_camera: bitratePerCamera || adjustedBitrate,
       retention_days: input.retention_days,
-      adjusted_bitrate: Number(aiData.calculations.adjusted_bitrate) || 0,
-      overhead_factor: Number(aiData.calculations.overhead_factor) || 1.2
+      adjusted_bitrate: adjustedBitrate || (input.custom_bitrate || 4.0) * (input.codec === 'H.265' ? 0.6 : input.codec === 'H.264' ? 1.0 : 0.8)
     };
+    
+    // Calculate daily_storage_tb if not provided (for backward compatibility)
+    if (!aiData.calculations.daily_storage_tb && calculations.daily_storage_per_camera_gb > 0) {
+      calculations.daily_storage_tb = (calculations.daily_storage_per_camera_gb * input.cameras) / 1000;
+    }
 
     // Parse product recommendations from Gemini
     let topProducts: StorageRecommendation[] = [];
@@ -499,8 +547,9 @@ function validateAndFormatGeminiResponse(
       primaryRecommendation = topProducts[0];
     } else {
       // Fallback: generate recommendations based on calculations
-      const bestProduct = findBestProduct(calculations.total_storage_tb, input.cameras) as keyof typeof PRODUCT_SPECIFICATIONS;
-      const secondBestProduct = findSecondBestProduct(calculations.total_storage_tb, input.cameras, bestProduct) as keyof typeof PRODUCT_SPECIFICATIONS;
+      const storageForRecommendation = calculations.total_usable_storage_tb || calculations.total_storage_tb;
+      const bestProduct = findBestProduct(storageForRecommendation, input.cameras) as keyof typeof PRODUCT_SPECIFICATIONS;
+      const secondBestProduct = findSecondBestProduct(storageForRecommendation, input.cameras, bestProduct) as keyof typeof PRODUCT_SPECIFICATIONS;
       
       const productSpecs = PRODUCT_SPECIFICATIONS[bestProduct];
       const secondProductSpecs = PRODUCT_SPECIFICATIONS[secondBestProduct];
@@ -520,7 +569,7 @@ function validateAndFormatGeminiResponse(
           cons: ['Requires professional installation'],
           raid_support: productSpecs.raid_support,
           suitable_for: productSpecs.suitable_for,
-          why_recommended: `Perfect for your ${input.cameras} camera deployment requiring ${calculations.total_storage_tb.toFixed(1)} TB storage`,
+          why_recommended: `Perfect for your ${input.cameras} camera deployment requiring ${(calculations.total_usable_storage_tb || calculations.total_storage_tb).toFixed(1)} TB storage`,
           key_benefits: productSpecs.key_features
         }
       ];
@@ -613,10 +662,13 @@ function generateMockRecommendations(input: any): AIRecommendationResponse {
   const estimatedBitrate = 4.0; // Default estimate
   const compressionFactor = input.codec === 'H.265' ? 0.6 : input.codec === 'H.264' ? 1.0 : 0.8;
   const adjustedBitrate = estimatedBitrate * compressionFactor;
-  const dailyStorageMB = (adjustedBitrate * 3600 * input.recording_hours_per_day) / 8;
+  // Use recording_hours_per_day dynamically (not hardcoded 24 hours)
+  const secondsToRecord = input.recording_hours_per_day * 3600;
+  const dailyStorageMB = (adjustedBitrate * secondsToRecord) / 8;
   const dailyWithActivity = dailyStorageMB * (input.activity_percent / 100);
-  const totalStorageMB = (dailyWithActivity * input.retention_days * input.cameras) * 1.2;
-  const totalStorageTB = totalStorageMB / 1_000_000;
+  const totalStorageMB = dailyWithActivity * input.retention_days * input.cameras;
+  // Use 1,048,576 (1024 * 1024) for MB to TB conversion
+  const totalStorageTB = totalStorageMB / 1_048_576;
 
   console.log('📊 Mock storage calculation result:', { totalStorageTB });
 
@@ -642,7 +694,7 @@ function generateMockRecommendations(input: any): AIRecommendationResponse {
       cons: ['Requires professional installation', 'Initial setup complexity'],
       raid_support: productSpecs.raid_support,
       suitable_for: productSpecs.suitable_for,
-      why_recommended: `Perfect for your ${input.cameras} camera deployment requiring ${totalStorageTB.toFixed(1)} TB storage with ${input.retention_days} days retention`,
+      why_recommended: `Perfect for your ${input.cameras} camera deployment requiring ${totalUsableStorageTB} TB storage with ${input.retention_days} days retention`,
       key_benefits: productSpecs.key_features
     },
     {
@@ -663,17 +715,20 @@ function generateMockRecommendations(input: any): AIRecommendationResponse {
     }
   ];
 
+  // Round up to nearest whole TB for safety margin
+  const totalUsableStorageTB = Math.ceil(totalStorageTB);
+  
   return {
     cached: false,
     calculations: {
-      total_storage_tb: totalStorageTB,
+      total_storage_tb: totalUsableStorageTB, // Keep for backward compatibility
+      total_usable_storage_tb: totalUsableStorageTB, // New field name
       daily_storage_tb: (dailyWithActivity * input.cameras) / 1000,
-      daily_storage_per_camera_gb: dailyWithActivity / 1000,
+      daily_storage_per_camera_gb: dailyWithActivity / 1024,
       total_bitrate_mbps: adjustedBitrate * input.cameras,
       bitrate_per_camera: adjustedBitrate,
       retention_days: input.retention_days,
-      adjusted_bitrate: adjustedBitrate,
-      overhead_factor: 1.2
+      adjusted_bitrate: adjustedBitrate
     },
     recommendation: topProducts[0],
     top_products: topProducts,
@@ -685,7 +740,7 @@ function generateMockRecommendations(input: any): AIRecommendationResponse {
       insights: [
         'Storage calculated using industry-standard bitrate tables',
         'Recommendation optimized for your specific camera configuration',
-        'Includes 20% overhead for system metadata and indexing'
+        'Storage rounded up to nearest whole TB for safety margin'
       ]
     },
     summary: `Recommended ${bestProduct} and ${secondBestProduct} for your ${input.cameras} camera surveillance system`,

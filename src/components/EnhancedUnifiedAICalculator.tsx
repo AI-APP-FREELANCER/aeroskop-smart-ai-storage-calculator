@@ -155,8 +155,41 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
 
 
   const handleCalculate = async () => {
-    if (!formData.cameras || Number(formData.cameras) <= 0) {
+    // Front-end validation with guardrails
+    const cameras = Number(formData.cameras) || 1;
+    const activityPercent = formData.activityPercent || 1;
+    const retentionDays = formData.retentionDays || 1;
+    const recordingHoursPerDay = formData.recordingHoursPerDay || 1;
+    const customBitrate = formData.customBitrate || undefined;
+    
+    if (!formData.cameras || cameras <= 0) {
       alert('Please enter a valid number of cameras');
+      return;
+    }
+    
+    // Validate critical fields - apply guardrails
+    if (cameras === 0) {
+      alert('Number of cameras cannot be 0. Using default value of 1.');
+      return;
+    }
+    
+    if (activityPercent === 0) {
+      alert('Activity level cannot be 0%. Using default value of 1%.');
+      return;
+    }
+    
+    if (retentionDays === 0) {
+      alert('Retention days cannot be 0. Using default value of 1 day.');
+      return;
+    }
+    
+    if (recordingHoursPerDay === 0) {
+      alert('Recording hours per day cannot be 0. Using default value of 1 hour.');
+      return;
+    }
+    
+    if (customBitrate !== undefined && customBitrate <= 0) {
+      alert('Custom bitrate cannot be 0 or negative. Please enter a valid bitrate.');
       return;
     }
 
@@ -166,47 +199,43 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
     setAiRecommendations(null);
 
     try {
-      // Send all parameters to Gemini AI - it will calculate everything
-      console.log('🧮 Sending parameters to Gemini AI:', {
-        cameras: Number(formData.cameras),
-        resolution: formData.resolution,
-        fps: useCustomFps && formData.customFps ? formData.customFps : formData.fps,
-        codec: formData.codec,
-        quality: 'Medium',
-        customBitrate: formData.customBitrate || undefined,
-        customFps: useCustomFps ? formData.customFps : undefined,
-        recordingHoursPerDay: formData.recordingHoursPerDay,
-        activityPercent: formData.activityPercent,
-        retentionDays: formData.retentionDays,
-        recordingMode: formData.recordingMode,
-        preRecordSeconds: formData.preRecordSeconds,
-        postRecordSeconds: formData.postRecordSeconds
-      });
-      
       // Use custom FPS if available, otherwise use default FPS
       const effectiveFps = useCustomFps && formData.customFps ? formData.customFps : formData.fps;
-      const effectiveBitrate = formData.customBitrate || undefined;
+      const effectiveBitrate = customBitrate || undefined;
+      
+      // Prepare final payload with validated values
+      const payload = {
+        cameras: cameras,
+        resolution: formData.resolution,
+        fps: effectiveFps,
+        codec: formData.codec,
+        quality: 'Medium',
+        activity_percent: activityPercent,
+        recording_hours_per_day: recordingHoursPerDay,
+        retention_days: retentionDays,
+        recording_mode: formData.recordingMode,
+        pre_record_seconds: formData.preRecordSeconds || 2,
+        post_record_seconds: formData.postRecordSeconds || 5,
+        custom_bitrate: effectiveBitrate,
+        custom_fps: useCustomFps && formData.customFps ? formData.customFps : undefined,
+        sessionId,
+        userId: null
+      };
+      
+      // Log final payload for verification
+      console.log('🧮 Final payload being sent to API (with guardrails applied):', payload);
+      console.log('✅ Validation check:', {
+        cameras: payload.cameras > 0,
+        activity_percent: payload.activity_percent > 0,
+        retention_days: payload.retention_days > 0,
+        recording_hours_per_day: payload.recording_hours_per_day > 0,
+        custom_bitrate: payload.custom_bitrate === undefined || payload.custom_bitrate > 0
+      });
       
       const response = await fetch('/api/ai-storage-recommendation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cameras: Number(formData.cameras),
-          resolution: formData.resolution,
-          fps: effectiveFps,
-          codec: formData.codec,
-          quality: 'Medium', // Default quality, bitrate is now controlled by slider
-          activity_percent: formData.activityPercent,
-          recording_hours_per_day: formData.recordingHoursPerDay,
-          retention_days: formData.retentionDays,
-          recording_mode: formData.recordingMode,
-          pre_record_seconds: formData.preRecordSeconds || 2,
-          post_record_seconds: formData.postRecordSeconds || 5,
-          custom_bitrate: effectiveBitrate,
-          custom_fps: useCustomFps && formData.customFps ? formData.customFps : undefined,
-          sessionId,
-          userId: null // Add user ID if available
-        })
+        body: JSON.stringify(payload)
       });
 
       if (response.ok) {
@@ -222,10 +251,10 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
         const storageCalc: EnhancedStorageCalculation = {
           bitratePerCamera: recommendations.calculations.bitrate_per_camera,
           dailyStoragePerCameraGB: recommendations.calculations.daily_storage_per_camera_gb,
-          totalStorageTB: recommendations.calculations.total_storage_tb,
+          totalStorageTB: recommendations.calculations.total_storage_tb || recommendations.calculations.total_usable_storage_tb,
           totalBitrateMbps: recommendations.calculations.total_bitrate_mbps,
           adjustedBitrate: recommendations.calculations.adjusted_bitrate,
-          overhead: recommendations.calculations.overhead_factor
+          overhead: 0 // No longer used - removed from calculations
         };
         setCalculationResult(storageCalc);
         
@@ -841,6 +870,47 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
                 </>
               )}
             </button>
+
+            {/* Active Parameters - Below Calculate Button, Horizontal Layout */}
+            <div className="mt-6 pt-6 border-t border-gray-200/60">
+              <h3 className="text-sm font-semibold text-gray-700 mb-4">Active Parameters</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-blue-200/50 p-3">
+                  <p className="text-xs text-gray-600 mb-1">Cameras</p>
+                  <p className="text-lg font-bold text-blue-600">{formData.cameras || 'Not set'}</p>
+                </div>
+                <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-blue-200/50 p-3">
+                  <p className="text-xs text-gray-600 mb-1">Resolution</p>
+                  <p className="text-sm font-semibold text-gray-900">{formData.resolution}</p>
+                </div>
+                <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-blue-200/50 p-3">
+                  <p className="text-xs text-gray-600 mb-1">FPS</p>
+                  <p className="text-sm font-semibold text-gray-900">{useCustomFps && formData.customFps ? formData.customFps : formData.fps}</p>
+                </div>
+                <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-blue-200/50 p-3">
+                  <p className="text-xs text-gray-600 mb-1">Codec</p>
+                  <p className="text-sm font-semibold text-gray-900">{formData.codec}</p>
+                </div>
+                {formData.customBitrate && formData.customBitrate > 0 && (
+                  <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-orange-200/50 p-3">
+                    <p className="text-xs text-gray-600 mb-1">Custom Bitrate</p>
+                    <p className="text-sm font-semibold text-orange-600">{formData.customBitrate.toFixed(1)} Mbps</p>
+                  </div>
+                )}
+                <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200/50 p-3">
+                  <p className="text-xs text-gray-600 mb-1">Recording Hours/Day</p>
+                  <p className="text-sm font-semibold text-green-600">{formData.recordingHoursPerDay} hours</p>
+                </div>
+                <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-purple-200/50 p-3">
+                  <p className="text-xs text-gray-600 mb-1">Motion Activity</p>
+                  <p className="text-sm font-semibold text-purple-600">{formData.activityPercent}%</p>
+                </div>
+                <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-blue-200/50 p-3">
+                  <p className="text-xs text-gray-600 mb-1">Retention</p>
+                  <p className="text-sm font-semibold text-gray-900">{formData.retentionDays} days</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -948,32 +1018,6 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
             </div>
           </div>
 
-          {/* Active Parameters - Always Visible */}
-          <div className="mt-4 pt-4 border-t border-gray-200/60">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Active Parameters</h3>
-            <div className="space-y-2">
-              <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-blue-200/50 p-3">
-                <p className="text-xs text-gray-600 mb-1">Cameras</p>
-                <p className="text-lg font-bold text-blue-600">{formData.cameras || 'Not set'}</p>
-              </div>
-              <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-blue-200/50 p-3">
-                <p className="text-xs text-gray-600 mb-1">Resolution</p>
-                <p className="text-sm font-semibold text-gray-900">{formData.resolution}</p>
-              </div>
-              <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-blue-200/50 p-3">
-                <p className="text-xs text-gray-600 mb-1">FPS</p>
-                <p className="text-sm font-semibold text-gray-900">{useCustomFps && formData.customFps ? formData.customFps : formData.fps}</p>
-              </div>
-              <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-blue-200/50 p-3">
-                <p className="text-xs text-gray-600 mb-1">Codec</p>
-                <p className="text-sm font-semibold text-gray-900">{formData.codec}</p>
-              </div>
-              <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-blue-200/50 p-3">
-                <p className="text-xs text-gray-600 mb-1">Retention</p>
-                <p className="text-sm font-semibold text-gray-900">{formData.retentionDays} days</p>
-              </div>
-            </div>
-          </div>
 
           {/* Quick Stats - Shown when calculated */}
           {calculationResult && (
@@ -1028,16 +1072,14 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
           
           {calculationResult && (
             <>
-              {/* Storage Analysis Result Section */}
+              {/* Storage Metrics Section */}
               <div className="mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Storage Analysis Result</h2>
-                
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                   {/* Total Usable Capacity */}
                   <div className="bg-white/80 backdrop-blur-md rounded-xl border border-blue-100/50 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] p-4">
-                    <h3 className="font-semibold text-gray-700 mb-2">Total Usable Capacity</h3>
+                    <h3 className="font-semibold text-gray-700 mb-2">Total Storage Required</h3>
                     <p className="text-2xl font-bold text-blue-600">{formatStorage(calculationResult.totalStorageTB)}</p>
-                    <p className="text-xs text-gray-500 mt-1">GB if &lt; 1 TB, TB if ≥ 1 TB</p>
+                    <p className="text-xs text-gray-500 mt-1">Rounded up to nearest whole TB for safety margin</p>
                   </div>
                   
                   {/* Daily Storage Capacity - ALWAYS in GB */}
@@ -1065,112 +1107,64 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
                 </div>
               </div>
 
-              {/* Enhanced Storage Output Table */}
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Storage Requirements Details</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse border border-gray-200/60 bg-white/60 backdrop-blur-sm rounded-xl overflow-hidden">
-                    <thead>
-                      <tr className="bg-white/80 backdrop-blur-sm border-b border-gray-200/60">
-                        <th className="border-b border-gray-200/60 px-4 py-3 text-left font-semibold text-gray-700">Metric</th>
-                        <th className="border-b border-gray-200/60 px-4 py-3 text-left font-semibold text-gray-700">Value</th>
-                        <th className="border-b border-gray-200/60 px-4 py-3 text-left font-semibold text-gray-700">Description</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="bg-white/40 hover:bg-white/60 transition-colors">
-                        <td className="border-b border-gray-200/40 px-4 py-2 font-medium text-gray-700">Total Storage Required</td>
-                        <td className="border-b border-gray-200/40 px-4 py-2 font-semibold text-blue-600">
-                          {formatStorage(calculationResult.totalStorageTB)}
-                        </td>
-                        <td className="border-b border-gray-200/40 px-4 py-2 text-sm text-gray-600">
-                          Total storage space required including 20% overhead
-                        </td>
-                      </tr>
-                      <tr className="bg-white/40 hover:bg-white/60 transition-colors">
-                        <td className="border-b border-gray-200/40 px-4 py-2 font-medium text-gray-700">Retention Days</td>
-                        <td className="border-b border-gray-200/40 px-4 py-2 font-semibold text-gray-900">{formData.retentionDays}</td>
-                        <td className="border-b border-gray-200/40 px-4 py-2 text-sm text-gray-600">
-                          Duration for which recordings are stored
-                        </td>
-                      </tr>
-                      <tr className="bg-white/40 hover:bg-white/60 transition-colors">
-                        <td className="px-4 py-2 font-medium text-gray-700">Average Motion % (Adjusted)</td>
-                        <td className="px-4 py-2 font-semibold text-gray-900">
-                          {(calculationResult.adjustedMotionPercent || formData.activityPercent).toFixed(1)}%
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-600">
-                          After applying pre/post detection intervals
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
 
-              {/* Aeroskop Product Recommendations Section */}
-              {aiRecommendations && (aiRecommendations.top_products && aiRecommendations.top_products.length > 0 || aiRecommendations.recommendation) && (() => {
-                // Get unique products - filter out duplicates by product_name
-                let productsToShow: any[] = [];
+              {/* Aeroskop Product Recommendation Section - Single Best Match */}
+              {aiRecommendations && (aiRecommendations.recommendation || (aiRecommendations.top_products && aiRecommendations.top_products.length > 0)) && (() => {
+                // Get the best single product recommendation
+                let bestProduct: any = null;
                 
-                if (aiRecommendations.top_products && aiRecommendations.top_products.length > 0) {
-                  // Filter out duplicates
-                  const uniqueProducts = aiRecommendations.top_products.filter((product, index, self) =>
-                    index === self.findIndex((p) => p.product_name === product.product_name)
-                  );
-                  productsToShow = uniqueProducts;
-                } else if (aiRecommendations.recommendation) {
-                  productsToShow = [aiRecommendations.recommendation];
+                if (aiRecommendations.recommendation) {
+                  bestProduct = aiRecommendations.recommendation;
+                } else if (aiRecommendations.top_products && aiRecommendations.top_products.length > 0) {
+                  // Use the first product from top_products as the best match
+                  bestProduct = aiRecommendations.top_products[0];
                 }
                 
-                // Only show if we have at least one product
-                if (productsToShow.length === 0) return null;
+                // Only show if we have a product
+                if (!bestProduct) return null;
                 
                 return (
                   <div className="mb-6 border-t border-gray-200 pt-6 mt-6">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Recommended Aeroskop Products</h2>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Recommended Aeroskop Product</h2>
                     
-                    <div className={`grid gap-6 ${productsToShow.length === 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
-                      {productsToShow.map((product, index) => (
-                      <div key={index} className="bg-white/90 backdrop-blur-md rounded-xl border border-blue-100/50 shadow-[0_4px_12px_rgba(0,0,0,0.08)] p-6 hover:shadow-[0_6px_20px_rgba(0,0,0,0.12)] transition-all">
+                    <div className="grid grid-cols-1">
+                      <div className="bg-white/90 backdrop-blur-md rounded-xl border border-blue-100/50 shadow-[0_4px_12px_rgba(0,0,0,0.08)] p-6 hover:shadow-[0_6px_20px_rgba(0,0,0,0.12)] transition-all">
                         <div className="flex items-start justify-between mb-4">
                           <div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-1">{product.product_name}</h3>
-                            <p className="text-sm text-gray-600">Model: {product.product_model}</p>
+                            <h3 className="text-xl font-bold text-gray-900 mb-1">{bestProduct.product_name}</h3>
+                            <p className="text-sm text-gray-600">Model: {bestProduct.product_model}</p>
                           </div>
-                          {index === 0 && (
-                            <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full">
-                              Best Match
-                            </span>
-                          )}
+                          <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full">
+                            Best Match
+                          </span>
                         </div>
                         
-                        <p className="text-sm text-gray-700 mb-4">{product.why_recommended}</p>
+                        <p className="text-sm text-gray-700 mb-4">{bestProduct.why_recommended}</p>
                         
                         <div className="grid grid-cols-2 gap-3 mb-4">
                           <div className="bg-blue-50/50 rounded-lg p-3">
                             <p className="text-xs text-gray-600 mb-1">Channels</p>
-                            <p className="text-sm font-semibold text-gray-900">{product.channel_capacity}</p>
+                            <p className="text-sm font-semibold text-gray-900">{bestProduct.channel_capacity}</p>
                           </div>
                           <div className="bg-blue-50/50 rounded-lg p-3">
                             <p className="text-xs text-gray-600 mb-1">Storage</p>
-                            <p className="text-sm font-semibold text-gray-900">{product.storage_capacity_tb} TB</p>
+                            <p className="text-sm font-semibold text-gray-900">{bestProduct.storage_capacity_tb} TB</p>
                           </div>
                           <div className="bg-blue-50/50 rounded-lg p-3">
                             <p className="text-xs text-gray-600 mb-1">CPU</p>
-                            <p className="text-sm font-semibold text-gray-900">{product.cpu}</p>
+                            <p className="text-sm font-semibold text-gray-900">{bestProduct.cpu}</p>
                           </div>
                           <div className="bg-blue-50/50 rounded-lg p-3">
                             <p className="text-xs text-gray-600 mb-1">RAM</p>
-                            <p className="text-sm font-semibold text-gray-900">{product.ram}</p>
+                            <p className="text-sm font-semibold text-gray-900">{bestProduct.ram}</p>
                           </div>
                         </div>
 
-                        {product.key_benefits && product.key_benefits.length > 0 && (
+                        {bestProduct.key_benefits && bestProduct.key_benefits.length > 0 && (
                           <div className="mb-4">
                             <p className="text-xs font-semibold text-gray-700 mb-2">Key Features:</p>
                             <ul className="space-y-1">
-                              {product.key_benefits.map((benefit: string, idx: number) => (
+                              {bestProduct.key_benefits.map((benefit: string, idx: number) => (
                                 <li key={idx} className="text-xs text-gray-600 flex items-center gap-2">
                                   <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
                                   {benefit}
@@ -1180,9 +1174,9 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
                           </div>
                         )}
 
-                        {product.product_url && (
+                        {bestProduct.product_url && (
                           <a
-                            href={product.product_url}
+                            href={bestProduct.product_url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="w-full inline-block text-center bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-6 rounded-xl shadow-[0_4px_14px_0_rgba(59,130,246,0.3)] hover:shadow-[0_6px_20px_rgba(59,130,246,0.4)] transition-all"
@@ -1191,7 +1185,6 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
                           </a>
                         )}
                       </div>
-                      ))}
                     </div>
                   </div>
                 );

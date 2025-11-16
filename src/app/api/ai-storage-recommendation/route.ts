@@ -28,22 +28,55 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    
+    // Apply guardrails: prevent 0 values for critical fields
+    const validatedBody = {
+      ...body,
+      cameras: body.cameras > 0 ? body.cameras : 1,
+      activity_percent: body.activity_percent > 0 ? body.activity_percent : 1,
+      retention_days: body.retention_days > 0 ? body.retention_days : 1,
+      recording_hours_per_day: body.recording_hours_per_day > 0 ? body.recording_hours_per_day : 1,
+      custom_bitrate: body.custom_bitrate !== undefined && body.custom_bitrate > 0 ? body.custom_bitrate : undefined
+    };
+    
+    // Log validation results
+    if (body.cameras === 0 || body.activity_percent === 0 || body.retention_days === 0 || body.recording_hours_per_day === 0) {
+      console.warn('⚠️ Guardrail applied: Zero values detected and corrected:', {
+        original: {
+          cameras: body.cameras,
+          activity_percent: body.activity_percent,
+          retention_days: body.retention_days,
+          recording_hours_per_day: body.recording_hours_per_day,
+          custom_bitrate: body.custom_bitrate
+        },
+        corrected: {
+          cameras: validatedBody.cameras,
+          activity_percent: validatedBody.activity_percent,
+          retention_days: validatedBody.retention_days,
+          recording_hours_per_day: validatedBody.recording_hours_per_day,
+          custom_bitrate: validatedBody.custom_bitrate
+        }
+      });
+    }
 
+    // Use validated body for all operations
+    const bodyToUse = validatedBody;
+    
     // Generate hash for cache lookup - include all parameters
     const inputString = JSON.stringify({
-      cameras: body.cameras,
-      resolution: body.resolution,
-      fps: body.fps,
-      codec: body.codec,
-      quality: body.quality || 'Medium',
-      activity_percent: body.activity_percent,
-      recording_hours_per_day: body.recording_hours_per_day,
-      retention_days: body.retention_days,
-      recording_mode: body.recording_mode,
-      pre_record_seconds: body.pre_record_seconds || 2,
-      post_record_seconds: body.post_record_seconds || 5,
-      custom_bitrate: body.custom_bitrate || undefined,
-      custom_fps: body.custom_fps || undefined
+      cameras: bodyToUse.cameras,
+      resolution: bodyToUse.resolution,
+      fps: bodyToUse.fps,
+      codec: bodyToUse.codec,
+      quality: bodyToUse.quality || 'Medium',
+      activity_percent: bodyToUse.activity_percent,
+      recording_hours_per_day: bodyToUse.recording_hours_per_day,
+      retention_days: bodyToUse.retention_days,
+      recording_mode: bodyToUse.recording_mode,
+      pre_record_seconds: bodyToUse.pre_record_seconds || 2,
+      post_record_seconds: bodyToUse.post_record_seconds || 5,
+      custom_bitrate: bodyToUse.custom_bitrate || undefined,
+      custom_fps: bodyToUse.custom_fps || undefined
     });
     
     const inputHash = createHash('md5').update(inputString).digest('hex');
@@ -131,21 +164,38 @@ export async function POST(request: NextRequest) {
     const startTime = Date.now();
     
     try {
-      // Send all parameters to Gemini - it will calculate everything
+      // Log all parameters being sent to Gemini for verification (using validated values)
+      console.log('📤 Sending to Gemini AI (validated):', {
+        cameras: bodyToUse.cameras,
+        resolution: bodyToUse.resolution,
+        fps: bodyToUse.fps,
+        codec: bodyToUse.codec,
+        quality: bodyToUse.quality || 'Medium',
+        activity_percent: bodyToUse.activity_percent,
+        recording_hours_per_day: bodyToUse.recording_hours_per_day,
+        retention_days: bodyToUse.retention_days,
+        recording_mode: bodyToUse.recording_mode,
+        custom_bitrate: bodyToUse.custom_bitrate,
+        custom_fps: bodyToUse.custom_fps,
+        pre_record_seconds: bodyToUse.pre_record_seconds,
+        post_record_seconds: bodyToUse.post_record_seconds
+      });
+      
+      // Send validated parameters to Gemini - it will calculate everything
       const aiResponse = await generateGeminiStorageRecommendation({
-        cameras: body.cameras,
-        resolution: body.resolution,
-        fps: body.fps,
-        codec: body.codec,
-        quality: body.quality || 'Medium',
-        activity_percent: body.activity_percent,
-        recording_hours_per_day: body.recording_hours_per_day,
-        retention_days: body.retention_days,
-        recording_mode: body.recording_mode,
-        pre_record_seconds: body.pre_record_seconds,
-        post_record_seconds: body.post_record_seconds,
-        custom_bitrate: body.custom_bitrate,
-        custom_fps: body.custom_fps
+        cameras: bodyToUse.cameras,
+        resolution: bodyToUse.resolution,
+        fps: bodyToUse.fps,
+        codec: bodyToUse.codec,
+        quality: bodyToUse.quality || 'Medium',
+        activity_percent: bodyToUse.activity_percent,
+        recording_hours_per_day: bodyToUse.recording_hours_per_day,
+        retention_days: bodyToUse.retention_days,
+        recording_mode: bodyToUse.recording_mode,
+        pre_record_seconds: bodyToUse.pre_record_seconds,
+        post_record_seconds: bodyToUse.post_record_seconds,
+        custom_bitrate: bodyToUse.custom_bitrate,
+        custom_fps: bodyToUse.custom_fps
       }, {
         sessionId: body.sessionId || body.session_id || 'anonymous',
         userId: body.userId ? String(body.userId) : (body.user_id ? String(body.user_id) : undefined)
@@ -171,13 +221,13 @@ export async function POST(request: NextRequest) {
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
         [
           inputHash,
-          body.cameras,
-          body.resolution,
-          body.fps,
-          body.codec,
-          body.activity_percent, // Use new activity_percent instead of activity_level
-          body.retention_days,
-          body.recording_mode,
+          bodyToUse.cameras,
+          bodyToUse.resolution,
+          bodyToUse.fps,
+          bodyToUse.codec,
+          bodyToUse.activity_percent, // Use new activity_percent instead of activity_level
+          bodyToUse.retention_days,
+          bodyToUse.recording_mode,
           JSON.stringify(product1), // Store first product in good field
           JSON.stringify(product1), // Store first product in better field (primary)
           JSON.stringify(product2), // Store second product in best field

@@ -1,69 +1,129 @@
-# Changes Verification - EnhancedUnifiedAICalculator.tsx
+# Changes Verification Guide
 
-## ✅ Confirmed: All Changes Are in the File
+## ✅ Changes Confirmed in `src/lib/gemini.ts`
 
-### File Location
-- **Active Component**: `src/components/EnhancedUnifiedAICalculator.tsx`
-- **Routes Using It**: 
-  - `/unified-calculator` → Uses `EnhancedUnifiedAICalculator`
-  - `/enhanced-calculator` → Uses `EnhancedUnifiedAICalculator`
-  - Main page floating button → Links to `/unified-calculator`
+All the requested changes have been successfully applied to the correct file: `src/lib/gemini.ts`
 
-### ✅ Changes Verified in Code
+### Key Changes Made:
 
-#### 1. Recording Mode Lock (Lines 799-848)
-- ✅ Lock badge shows when Motion Activity >= 90% (Line 801-805)
-- ✅ Dropdown disabled when >= 90% (Line 831)
-- ✅ onMouseDown prevents opening (Lines 815-822)
-- ✅ onClick prevents opening (Lines 823-830)
-- ✅ pointer-events-none styling (Line 832, 835)
-- ✅ Auto-lock in handleInputChange (Lines 90-95)
-- ✅ useEffect enforcement (Lines 108-123)
+1. **✅ Recording Hours Fix (Line 133)**
+   - OLD: `seconds_per_day = 86400` (hardcoded)
+   - NEW: `seconds_to_record = recording_hours_per_day * 3600` (dynamic)
 
-#### 2. Resolution MP Values (Lines 651-654)
-- ✅ 720p (0.92 MP)
-- ✅ 1080p (2.07 MP)
-- ✅ 4MP (4 MP)
-- ✅ 4K (8.29 MP)
+2. **✅ TB Conversion Fix (Line 149)**
+   - OLD: `total_storage_tb = (total_storage_mb / 1,024,000) * 1.2`
+   - NEW: `total_storage_tb = total_storage_mb / 1048576` (Note: 1024 * 1024)
 
-#### 3. Storage Analysis Result Section (Lines 1095-1129)
-- ✅ "Storage Analysis Result" heading (Line 1096)
-- ✅ Total Usable Capacity with formatStorage() (Lines 1100-1104)
-- ✅ Daily Storage Capacity with formatDailyStorageAlwaysGB() (Lines 1107-1115)
-- ✅ Bitrate Per Camera (Lines 1118-1121)
-- ✅ Total Bit Rate (Lines 1124-1127)
+3. **✅ Safety Margin Added (Line 151-152)**
+   - NEW: "For customer satisfaction, you MUST round the final total_storage_tb value UP to the nearest whole number (integer)."
 
-#### 4. Import Statement (Line 28)
-- ✅ formatDailyStorageAlwaysGB imported
+4. **✅ Overhead Factor Removed**
+   - Removed the 1.2x multiplier from calculations
+   - Removed `overhead_factor` from JSON response format
 
-### ✅ Gemini Calculation Formula (src/lib/gemini.ts)
-- ✅ Changed from /8000 to /8 (Line 121-132)
-- ✅ Resolution MP mapping table added (Lines 82-92)
-- ✅ Reference calculation example added (Lines 149-155)
+5. **✅ Updated User Prompt (Line 274)**
+   - Added explicit instruction: "CRITICAL: Use recording_hours_per_day in Step 4 calculation"
 
-### ✅ Storage Formatter (src/lib/storageFormatter.ts)
-- ✅ formatDailyStorageAlwaysGB() function added (Lines 28-39)
+6. **✅ Updated Response Format (Line 185)**
+   - Changed to `total_usable_storage_tb` (rounded up to integer)
+   - Removed `overhead_factor` field
+   - Removed `daily_storage_tb` from required output
 
-## Possible Issues
+## 🔍 How to Verify Changes Are Working
 
-If changes are not showing:
+### Step 1: Restart Your Development Server
+```bash
+# Stop the current server (Ctrl+C)
+# Then restart:
+npm run dev
+# or
+yarn dev
+```
 
-1. **Build Cache**: Next.js might be using cached build
-   - Solution: Clear `.next` folder and restart dev server
+### Step 2: Clear Browser Cache
+- Hard refresh: `Ctrl+Shift+R` (Windows) or `Cmd+Shift+R` (Mac)
+- Or clear browser cache completely
 
-2. **Browser Cache**: Browser might be showing old version
-   - Solution: Hard refresh (Ctrl+Shift+R or Cmd+Shift+R)
+### Step 3: Clear API Cache (If Using)
+The API uses a database cache. To test with fresh calculations:
+- Clear the `storage_recommendations_cache` table, OR
+- Use unique parameters that haven't been cached
 
-3. **Dev Server Not Restarted**: Changes require server restart
-   - Solution: Stop and restart `npm run dev`
+### Step 4: Test with Different Recording Hours
+Try these test cases to verify the fix:
 
-4. **Wrong Route**: Make sure you're on `/unified-calculator` or `/enhanced-calculator`
+**Test Case 1: 12 Hours Recording**
+- Cameras: 20
+- Resolution: 1080p
+- FPS: 30
+- Codec: H.264
+- Recording Hours: **12** (not 24)
+- Activity: 75%
+- Retention: 30 days
 
-## Verification Steps
+**Expected Result**: Storage should be approximately **HALF** of what it would be with 24 hours.
 
-1. Check browser console for errors
-2. Verify you're on the correct route (`/unified-calculator`)
-3. Hard refresh the page
-4. Check if dev server is running and has picked up changes
-5. Clear Next.js cache: Delete `.next` folder and restart
+**Test Case 2: 24 Hours Recording**
+- Same parameters but Recording Hours: **24**
 
+**Expected Result**: Storage should be approximately **DOUBLE** of the 12-hour case.
+
+### Step 5: Check Server Logs
+When you make a calculation request, check your server console for:
+```
+🧮 Gemini calculation input: { recording_hours_per_day: 12, ... }
+```
+
+The log should show the actual `recording_hours_per_day` value being sent.
+
+### Step 6: Verify Response Structure
+The API response should now include:
+```json
+{
+  "calculations": {
+    "total_usable_storage_tb": 35,  // Rounded up to whole number
+    "daily_storage_per_camera_gb": 47.46,
+    // NO "overhead_factor" field
+  }
+}
+```
+
+## 🐛 Troubleshooting
+
+### If changes still don't appear:
+
+1. **Check if Gemini API Key is configured**
+   - If API key is missing/invalid, it uses mock recommendations
+   - Mock recommendations also have the fix, but verify the API key is set
+
+2. **Check for cached responses**
+   - The API caches responses based on input hash
+   - Try with slightly different parameters to bypass cache
+
+3. **Verify file is saved**
+   - Check `src/lib/gemini.ts` line 133 should show: `seconds_to_record = recording_hours_per_day * 3600`
+   - Check line 149 should show: `total_storage_tb = total_storage_mb / 1048576`
+
+4. **Check build/compilation errors**
+   - Look for TypeScript errors in console
+   - Ensure the file compiles without errors
+
+## 📝 File Locations
+
+- **Main File**: `src/lib/gemini.ts` (✅ All changes here)
+- **API Route**: `src/app/api/ai-storage-recommendation/route.ts` (uses gemini.ts)
+- **Component Used**: `src/components/EnhancedUnifiedAICalculator.tsx` (not UnifiedAICalculator.tsx)
+- **Deleted**: `src/components/UnifiedAICalculator.tsx` (was unused duplicate)
+
+## ✅ Verification Checklist
+
+- [x] System prompt updated with dynamic recording hours
+- [x] TB conversion uses 1,048,576 (1024 * 1024)
+- [x] Safety margin (round up) instruction added
+- [x] Overhead factor removed from calculations
+- [x] User prompt emphasizes recording_hours_per_day
+- [x] Response format updated (total_usable_storage_tb)
+- [x] Mock recommendations updated with same fixes
+- [x] Unused duplicate file deleted
+
+All changes are in the correct file and ready to use!
