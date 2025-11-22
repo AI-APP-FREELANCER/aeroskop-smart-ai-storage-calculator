@@ -11,13 +11,29 @@ interface UserStats {
   recentUsers: User[];
 }
 
+interface ConsultationLead {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  company: string | null;
+  phone_number: string | null;
+  area_of_interest: string | null;
+  message_content: string | null;
+  created_at: string;
+}
+
 export default function AdminAnalytics() {
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [consultationLeads, setConsultationLeads] = useState<ConsultationLead[]>([]);
+  const [leadsLoading, setLeadsLoading] = useState(true);
+  const [leadsError, setLeadsError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUserStats();
+    fetchConsultationLeads();
   }, []);
 
   const fetchUserStats = async () => {
@@ -78,6 +94,62 @@ export default function AdminAnalytics() {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchConsultationLeads = async () => {
+    try {
+      setLeadsLoading(true);
+      setLeadsError(null);
+      
+      // Fetch consultation leads from PostgreSQL via API
+      const response = await fetch('/api/consultation/leads', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      // Check if response is ok before parsing JSON
+      if (!response.ok) {
+        let errorMessage = 'Failed to fetch consultation leads';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (parseError) {
+          // Response is not JSON, use status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+      
+      // Parse successful response
+      const data = await response.json();
+      
+      if (data.success && Array.isArray(data.leads)) {
+        // Ensure all leads have proper data types matching PostgreSQL schema
+        const formattedLeads: ConsultationLead[] = data.leads.map((lead: any) => ({
+          id: Number(lead.id),
+          first_name: String(lead.first_name || ''),
+          last_name: String(lead.last_name || ''),
+          email: String(lead.email || ''),
+          company: lead.company ? String(lead.company) : null,
+          phone_number: lead.phone_number ? String(lead.phone_number) : null,
+          area_of_interest: lead.area_of_interest ? String(lead.area_of_interest) : null,
+          message_content: lead.message_content ? String(lead.message_content) : null,
+          created_at: String(lead.created_at || new Date().toISOString())
+        }));
+        setConsultationLeads(formattedLeads);
+      } else {
+        throw new Error(data.error || 'Invalid response format');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred while fetching leads';
+      setLeadsError(errorMessage);
+      setConsultationLeads([]);
+      console.error('Error fetching consultation leads:', err);
+    } finally {
+      setLeadsLoading(false);
     }
   };
 
@@ -335,6 +407,140 @@ export default function AdminAnalytics() {
               </tbody>
             </table>
           </div>
+        </div>
+
+        {/* New Consultation Leads Section */}
+        <div className="mt-8 bg-white rounded-lg shadow">
+          <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">New Consultation Leads</h3>
+              {!leadsLoading && consultationLeads.length > 0 && (
+                <p className="text-sm text-gray-500 mt-1">
+                  Total: {consultationLeads.length} {consultationLeads.length === 1 ? 'lead' : 'leads'}
+                </p>
+              )}
+            </div>
+            <button
+              onClick={fetchConsultationLeads}
+              disabled={leadsLoading}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <svg 
+                className={`w-4 h-4 ${leadsLoading ? 'animate-spin' : ''}`} 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              {leadsLoading ? 'Loading...' : 'Refresh'}
+            </button>
+          </div>
+          
+          {leadsLoading && consultationLeads.length === 0 ? (
+            <div className="p-12 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading consultation leads...</p>
+            </div>
+          ) : leadsError ? (
+            <div className="p-12 text-center">
+              <div className="text-red-600 text-xl mb-4">⚠️</div>
+              <p className="text-red-600 mb-4">{leadsError}</p>
+              <button 
+                onClick={fetchConsultationLeads}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          ) : consultationLeads.length === 0 ? (
+            <div className="p-12 text-center">
+              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No consultation leads</h3>
+              <p className="mt-1 text-sm text-gray-500">No consultation enquiries have been submitted yet.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      First Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Last Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Email Address
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Company
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Phone
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Area of Interest
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Message Content
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Submitted At
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {consultationLeads.map((lead) => (
+                    <tr key={lead.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {lead.first_name}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {lead.last_name}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-600">{lead.email}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-600">{lead.company || 'N/A'}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-600">{lead.phone_number || 'N/A'}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-600 max-w-xs truncate">
+                          {lead.area_of_interest || 'N/A'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-600 max-w-md truncate" title={lead.message_content || ''}>
+                          {lead.message_content || 'N/A'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-600">
+                          {new Date(lead.created_at).toLocaleString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </div>

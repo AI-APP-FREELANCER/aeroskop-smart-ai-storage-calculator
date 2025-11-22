@@ -1,9 +1,11 @@
 'use client';
 
 import Image from "next/image";
+import Link from "next/link";
 import Header from "@/components/Header";
 import LoginModal from "@/components/LoginModal";
 import FloatingAICalculator from "@/components/FloatingAICalculator";
+import HeroBanner from "@/components/HeroBanner";
 import { useState } from "react";
 
 export default function Home() {
@@ -66,15 +68,6 @@ export default function Home() {
         <div className="absolute bottom-4 left-8 z-10">
           <div className="flex flex-wrap gap-4">
                 <a
-                  href="/security-cameras"
-              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-                >
-              View Products
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-                </a>
-                <a
                   href="/contact"
               className="inline-flex items-center gap-2 border border-white/30 bg-white/10 backdrop-blur text-white px-6 py-3 rounded-lg font-semibold hover:bg-white/20 transition-colors"
             >
@@ -118,45 +111,11 @@ export default function Home() {
                     img: "https://ext.same-assets.com/2174986154/2189941613.webp",
                     features: ["PoE+ Support", "Gigabit Speed", "Auto-Detection"],
                   },
-                  { 
-                    title: "Rhino Storage Servers", 
-                    description: "Scalable storage solutions built for demanding surveillance workloads and long-term retention.",
-                    href: "/rhinoservers", 
-                    img: "https://ext.same-assets.com/2174986154/303750571.webp",
-                    features: ["High Capacity", "RAID Support", "Hot-Swap"],
-                  },
-                  { 
-                    title: "Core Switches", 
-                    description: "Enterprise-grade core switching with 10G uplinks for high-bandwidth surveillance networks.",
-                    href: "/core-switches", 
-                    img: "https://ext.same-assets.com/2174986154/3786522156.webp",
-                    features: ["10G Uplinks", "Layer 3", "Redundancy"],
-                  },
-                  { 
-                    title: "Workstations", 
-                    description: "Powerful systems optimized for VMS, control rooms, and AI-powered surveillance analytics.",
-                    href: "/workstations", 
-                    img: "https://ext.same-assets.com/2174986154/1190281012.webp",
-                    features: ["High Performance", "Multi-Display", "AI Ready"],
-                  },
-                  { 
-                    title: "Strak VMS", 
-                    description: "End-to-end video management software platform with advanced analytics and AI integration.",
-                    href: "/strak-vms", 
-                    img: "https://ext.same-assets.com/2174986154/2801051794.svg",
-                    features: ["AI Analytics", "Cloud Integration", "Real-time Monitoring"],
-                  },
-                  { 
-                    title: "Access Control", 
-                    description: "Comprehensive access control solutions with biometric and card-based authentication.",
-                    href: "/access-control", 
-                    img: "https://ext.same-assets.com/2174986154/1009581275.webp",
-                    features: ["Biometric Auth", "Card Readers", "Mobile Access"],
-                  },
                 ].map((product, index) => (
-                  <div
+                  <Link
                     key={product.href}
-                    className="group relative bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-slate-100 hover:border-slate-200"
+                    href={product.href}
+                    className="group relative bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-slate-100 hover:border-slate-200 block cursor-pointer"
                   >
                     {/* Image Container */}
                     <div className="relative aspect-[4/3] overflow-hidden bg-slate-50">
@@ -191,7 +150,86 @@ export default function Home() {
                         ))}
                       </div>
                     </div>
-                  </div>
+                  </Link>
+                ))}
+              </div>
+        </div>
+
+        {/* Interstitial Hero Banner - Full Width (Random Selection) */}
+        <HeroBanner />
+
+        <div className="container">
+              {/* Second Group of Product Cards */}
+              <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:gap-8 mt-8">
+                {[
+                  { 
+                    title: "Rhino Storage Servers", 
+                    description: "Scalable storage solutions built for demanding surveillance workloads and long-term retention.",
+                    href: "/rhinoservers", 
+                    img: "https://ext.same-assets.com/2174986154/303750571.webp",
+                    features: ["High Capacity", "RAID Support", "Hot-Swap"],
+                  },
+                  { 
+                    title: "Core Switches", 
+                    description: "Enterprise-grade core switching with 10G uplinks for high-bandwidth surveillance networks.",
+                    href: "/core-switches", 
+                    img: "https://ext.same-assets.com/2174986154/3786522156.webp",
+                    features: ["10G Uplinks", "Layer 3", "Redundancy"],
+                  },
+                  { 
+                    title: "Workstations", 
+                    description: "Powerful systems optimized for VMS, control rooms, and AI-powered surveillance analytics.",
+                    href: "/workstations", 
+                    img: "https://ext.same-assets.com/2174986154/1190281012.webp",
+                    features: ["High Performance", "Multi-Display", "AI Ready"],
+                  },
+                  { 
+                    title: "Strak VMS", 
+                    description: "End-to-end video management software platform with advanced analytics and AI integration.",
+                    href: "/strak-vms", 
+                    img: "https://ext.same-assets.com/2174986154/2801051794.svg",
+                    features: ["AI Analytics", "Cloud Integration", "Real-time Monitoring"],
+                  },
+                ].map((product, index) => (
+                  <Link
+                    key={product.href}
+                    href={product.href}
+                    className="group relative bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-slate-100 hover:border-slate-200 block cursor-pointer"
+                  >
+                    {/* Image Container */}
+                    <div className="relative aspect-[4/3] overflow-hidden bg-slate-50">
+                      <Image 
+                        src={product.img} 
+                        alt={product.title} 
+                        fill 
+                        className="object-contain p-6 transition-transform duration-500 group-hover:scale-105" 
+                      />
+                    </div>
+                    
+                    {/* Content */}
+                    <div className="p-6">
+                      <div className="mb-4">
+                        <h3 className="text-xl font-semibold text-slate-900 mb-3 group-hover:text-blue-600 transition-colors duration-300">
+                          {product.title}
+                        </h3>
+                        <p className="text-slate-600 text-sm leading-relaxed mb-4">
+                          {product.description}
+                        </p>
+                      </div>
+                      
+                      {/* Features */}
+                      <div className="flex flex-wrap gap-2">
+                        {product.features.slice(0, 3).map((feature, idx) => (
+                          <span 
+                            key={idx}
+                            className="px-3 py-1 bg-slate-100 text-slate-700 text-xs font-medium rounded-full"
+                          >
+                            {feature}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </Link>
                 ))}
               </div>
         </div>
@@ -241,55 +279,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Case Studies Section */}
-      <section className="py-20 bg-white">
-        <div className="container">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-slate-900 mb-6">Success Stories</h2>
-            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-              See how organizations are transforming their surveillance with Aeroskop solutions
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-              <div className="mb-4">
-                <span className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full">Retail</span>
-              </div>
-              <h3 className="text-lg font-semibold text-slate-900 mb-3">Large Retail Chain</h3>
-              <p className="text-slate-600 text-sm mb-4">Deployed 200+ cameras across 15 locations with centralized storage management.</p>
-              <div className="text-sm text-slate-500">
-                <span className="font-medium">Result:</span> 40% reduction in storage costs with improved monitoring efficiency.
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-              <div className="mb-4">
-                <span className="text-sm font-medium text-green-600 bg-green-50 px-3 py-1 rounded-full">Manufacturing</span>
-              </div>
-              <h3 className="text-lg font-semibold text-slate-900 mb-3">Industrial Facility</h3>
-              <p className="text-slate-600 text-sm mb-4">High-capacity storage solution for 24/7 monitoring of critical manufacturing processes.</p>
-              <div className="text-sm text-slate-500">
-                <span className="font-medium">Result:</span> 99.9% uptime with seamless integration across multiple sites.
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-              <div className="mb-4">
-                <span className="text-sm font-medium text-purple-600 bg-purple-50 px-3 py-1 rounded-full">Office Complex</span>
-              </div>
-              <h3 className="text-lg font-semibold text-slate-900 mb-3">Corporate Headquarters</h3>
-              <p className="text-slate-600 text-sm mb-4">Scalable NVR solution for multi-building campus with centralized management.</p>
-              <div className="text-sm text-slate-500">
-                <span className="font-medium">Result:</span> Streamlined operations with intelligent storage optimization.
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-
-
       {/* Feature quick links (4-up) */}
       <section className="border-y border-slate-200/70 bg-white/70 py-10 backdrop-blur">
         <div className="container grid grid-cols-2 gap-6 md:grid-cols-4">
@@ -336,29 +325,6 @@ export default function Home() {
       </section>
 
 
-      {/* CTA band */}
-      <section className="relative overflow-hidden border-y border-slate-200/70 bg-gradient-to-r from-sky-50 to-white py-16">
-        <div className="container grid items-center gap-8 md:grid-cols-2">
-          <div>
-            <h3 className="text-2xl font-bold text-slate-900">Contact Us Today</h3>
-            <p className="mt-2 text-slate-600">
-              Reach out to our expert team to discuss your needs and find the
-              perfect surveillance solution.
-            </p>
-            <div className="mt-6 flex gap-3">
-              <a href="/contact" className="rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow hover:bg-blue-700">
-                Contact
-              </a>
-              <a href="/security-cameras" className="rounded-full border border-slate-300 bg-white/70 px-5 py-2.5 text-sm font-semibold text-slate-800 backdrop-blur hover:bg-white">
-                Explore Products
-              </a>
-            </div>
-          </div>
-          <div className="relative aspect-[16/10] overflow-hidden rounded-2xl border border-slate-200 bg-white/70 shadow-lg backdrop-blur">
-            <Image src="https://ext.same-assets.com/2174986154/614244017.webp" alt="Products" fill className="object-cover" />
-          </div>
-        </div>
-      </section>
 
       {/* Footer simplified in Aeroskop style */}
       <footer className="bg-white/80 py-12 backdrop-blur">

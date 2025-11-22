@@ -20,35 +20,72 @@ export default function Contact() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setSubmitStatus('idle');
     
     try {
-      // Create user in database
-      const userResponse = await fetch('/api/users', {
+      // Validate required fields on client side
+      if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim() || !formData.message.trim()) {
+        setSubmitStatus('error');
+        console.error('Validation error: Required fields are missing');
+        return;
+      }
+
+      // Submit consultation enquiry to PostgreSQL database via API
+      const response = await fetch('/api/consultation/submit', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          email: formData.email,
-          company: formData.company
+          first_name: formData.firstName.trim(),
+          last_name: formData.lastName.trim(),
+          email: formData.email.trim().toLowerCase(),
+          company: formData.company?.trim() || null,
+          phone_number: formData.phone?.trim() || null,
+          area_of_interest: formData.interest?.trim() || null,
+          message_content: formData.message.trim()
         })
       });
 
-      if (userResponse.ok) {
-        setSubmitStatus('success');
-        setFormData({
-          firstName: '',
-          lastName: '',
-          email: '',
-          company: '',
-          phone: '',
-          message: '',
-          interest: ''
-        });
-      } else {
+      // Parse response (whether success or error)
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        console.error('Failed to parse response:', parseError);
         setSubmitStatus('error');
+        return;
       }
+
+      // Check if response is ok AND success is true
+      if (!response.ok || !data.success) {
+        // Handle error response
+        const errorMessage = data.error || 'Failed to submit consultation enquiry. Please try again later.';
+        setSubmitStatus('error');
+        console.error('Submission error:', errorMessage, 'Status:', response.status, 'Response:', data);
+        return;
+      }
+
+      // Success - data was saved
+      console.log('✅ Consultation enquiry submitted successfully:', {
+        id: data.id,
+        created_at: data.created_at
+      });
+      setSubmitStatus('success');
+      // Clear form on successful submission
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        company: '',
+        phone: '',
+        message: '',
+        interest: ''
+      });
+      // Scroll to success message
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
+      console.error('Error submitting form:', error);
       setSubmitStatus('error');
     } finally {
       setIsSubmitting(false);
@@ -91,13 +128,23 @@ export default function Contact() {
               
               {submitStatus === 'success' && (
                 <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-800">
-                  Thank you for your message! We'll get back to you soon.
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="font-semibold">Thank you, your consultation request has been logged!</span>
+                  </div>
                 </div>
               )}
               
               {submitStatus === 'error' && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">
-                  There was an error sending your message. Please try again.
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>There was an error sending your message. Please try again.</span>
+                  </div>
                 </div>
               )}
 
@@ -233,34 +280,11 @@ export default function Contact() {
                 <div className="space-y-6">
                   <div className="flex items-start gap-4">
                     <div className="relative h-10 w-10 shrink-0 rounded-lg bg-sky-50 ring-1 ring-sky-100 flex items-center justify-center">
-                      <span className="text-blue-600">📞</span>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-slate-900">Phone</h3>
-                      <p className="text-slate-600">+973 77992203</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-4">
-                    <div className="relative h-10 w-10 shrink-0 rounded-lg bg-sky-50 ring-1 ring-sky-100 flex items-center justify-center">
                       <span className="text-blue-600">✉️</span>
                     </div>
                     <div>
                       <h3 className="font-semibold text-slate-900">Email</h3>
                       <p className="text-slate-600">info@aeroskop.com</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-4">
-                    <div className="relative h-10 w-10 shrink-0 rounded-lg bg-sky-50 ring-1 ring-sky-100 flex items-center justify-center">
-                      <span className="text-blue-600">📍</span>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-slate-900">Offices</h3>
-                      <div className="text-slate-600 space-y-1">
-                        <p>Umm Al Hassam, Kingdom of Bahrain</p>
-                        <p>ul. Hoża 86 lok. 410, 00-682 Warszawa</p>
-                      </div>
                     </div>
                   </div>
 
@@ -280,15 +304,56 @@ export default function Contact() {
                       </a>
                     </div>
                   </div>
-                </div>
-              </div>
 
-              <div className="bg-sky-50 rounded-2xl p-6 border border-sky-200">
-                <h3 className="font-semibold text-slate-900 mb-3">Business Hours</h3>
-                <div className="text-slate-600 space-y-1">
-                  <p>Monday - Friday: 9:00 AM - 6:00 PM</p>
-                  <p>Saturday: 10:00 AM - 4:00 PM</p>
-                  <p>Sunday: Closed</p>
+                  {/* Bahrain Office */}
+                  <div className="border-t border-slate-200 pt-6">
+                    <h3 className="font-semibold text-slate-900 mb-4">Bahrain Office</h3>
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-4">
+                        <div className="relative h-10 w-10 shrink-0 rounded-lg bg-sky-50 ring-1 ring-sky-100 flex items-center justify-center">
+                          <span className="text-blue-600">📍</span>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-slate-900">Address</h4>
+                          <p className="text-slate-600">Umm Al Hassam, Kingdom of Bahrain</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-4">
+                        <div className="relative h-10 w-10 shrink-0 rounded-lg bg-sky-50 ring-1 ring-sky-100 flex items-center justify-center">
+                          <span className="text-blue-600">📞</span>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-slate-900">Phone</h4>
+                          <p className="text-slate-600">+973 77992203</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Poland Office */}
+                  <div className="border-t border-slate-200 pt-6">
+                    <h3 className="font-semibold text-slate-900 mb-4">Poland Office</h3>
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-4">
+                        <div className="relative h-10 w-10 shrink-0 rounded-lg bg-sky-50 ring-1 ring-sky-100 flex items-center justify-center">
+                          <span className="text-blue-600">📍</span>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-slate-900">Address</h4>
+                          <p className="text-slate-600">ul. Hoża 86 lok. 410, 00-682 Warszawa, Poland</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-4">
+                        <div className="relative h-10 w-10 shrink-0 rounded-lg bg-sky-50 ring-1 ring-sky-100 flex items-center justify-center">
+                          <span className="text-blue-600">📞</span>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-slate-900">Phone</h4>
+                          <p className="text-slate-600">+48 732 082 387</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

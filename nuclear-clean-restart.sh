@@ -69,8 +69,26 @@ echo "✅ Dependencies installed"
 # Step 7: Setup environment
 echo ""
 echo "⚙️  Step 7: Setting up environment..."
-cp production.env .env.local
-echo "✅ Environment file created"
+# Copy production.env to .env.local only if .env.local doesn't exist
+# This preserves any custom API keys that were set manually
+if [ ! -f .env.local ]; then
+    cp production.env .env.local
+    echo "✅ Environment file created from production.env"
+    echo "⚠️  WARNING: GEMINI_API_KEY is set to placeholder value!"
+    echo "⚠️  Please update .env.local with your actual Gemini API key:"
+    echo "   nano .env.local"
+    echo "   (Change GEMINI_API_KEY=your_gemini_api_key_here to your actual key)"
+else
+    echo "✅ .env.local already exists, preserving existing configuration"
+    # Check if API key is still placeholder
+    if grep -q "GEMINI_API_KEY=your_gemini_api_key_here" .env.local; then
+        echo "⚠️  WARNING: GEMINI_API_KEY is still set to placeholder value!"
+        echo "⚠️  Please update .env.local with your actual Gemini API key:"
+        echo "   nano .env.local"
+    else
+        echo "✅ GEMINI_API_KEY appears to be configured"
+    fi
+fi
 
 # Step 8: Make sure port 3000 is free
 echo ""

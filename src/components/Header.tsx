@@ -19,19 +19,19 @@ export default function Header() {
     <header
       className={`fixed inset-x-0 top-0 z-50 transition-all ${
         scrolled
-          ? "backdrop-blur bg-slate-900/90 shadow-sm"
-          : "bg-slate-900/70 backdrop-blur-md"
+          ? "bg-white shadow-sm"
+          : "bg-white"
       }`}
     >
       <div className="container flex items-center gap-6 py-3" role="navigation" aria-label="Primary">
         <Link href="/" className="flex items-center gap-3" aria-label="Aeroskop home">
           <Image
-            src="https://ext.same-assets.com/2174986154/2796273073.svg"
+            src="/images/company_logo/aeroskop_logo.png"
             alt="Aeroskop"
-            width={135}
-            height={135}
+            width={120}
+            height={40}
             priority
-            style={{ width: 'auto', height: 'auto' }}
+            className="h-10 w-auto"
           />
           <span className="sr-only">Aeroskop</span>
         </Link>
@@ -43,7 +43,7 @@ export default function Header() {
             onMouseLeave={() => setOpenProducts(false)}
           >
             <button
-              className="text-sm font-medium text-white hover:text-blue-200 focus:outline-none"
+              className="text-sm font-medium text-slate-700 hover:text-blue-600 focus:outline-none"
               aria-haspopup="menu"
               aria-expanded={openProducts}
             >
@@ -137,7 +137,7 @@ export default function Header() {
             onMouseLeave={() => setOpenAdmin(false)}
           >
             <button
-              className="text-sm font-medium text-white hover:text-blue-200 focus:outline-none"
+              className="text-sm font-medium text-slate-700 hover:text-blue-600 focus:outline-none"
               aria-haspopup="menu"
               aria-expanded={openAdmin}
             >
@@ -183,13 +183,13 @@ export default function Header() {
 
           <Link
             href="/about"
-            className="text-sm font-medium text-white hover:text-blue-200"
+            className="text-sm font-medium text-slate-700 hover:text-blue-600"
           >
             About
           </Link>
           <Link
             href="/contact"
-            className="text-sm font-medium text-white hover:text-blue-200"
+            className="text-sm font-medium text-slate-700 hover:text-blue-600"
           >
             Contact
           </Link>
@@ -197,7 +197,7 @@ export default function Header() {
           {/* Enhanced Calculator Link */}
           <Link
             href="/enhanced-calculator"
-            className="text-sm font-medium text-white hover:text-blue-200 px-3 py-2 rounded-lg bg-green-600/20 hover:bg-green-600/30 transition-colors"
+            className="text-sm font-medium text-slate-700 hover:text-blue-600 px-3 py-2 rounded-lg bg-green-600/20 hover:bg-green-600/30 transition-colors"
           >
             Enhanced Calculator
           </Link>
