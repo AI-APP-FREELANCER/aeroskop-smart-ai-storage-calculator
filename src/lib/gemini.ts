@@ -326,7 +326,7 @@ Calculate all values from scratch using the provided parameters.
     // Log parsed response for debugging
     console.log('✅ Parsed AI Response:', {
       total_storage_tb: aiResponse.calculations.total_storage_tb,
-      total_usable_storage_tb: aiResponse.calculations.total_usable_storage_tb,
+      total_usable_storage_tb: aiResponse.calculations.total_usable_storage_tb || aiResponse.calculations.total_storage_tb,
       daily_storage_per_camera_gb: aiResponse.calculations.daily_storage_per_camera_gb,
       calculations: aiResponse.calculations
     });
@@ -500,7 +500,8 @@ function validateAndFormatGeminiResponse(
       total_bitrate_mbps: totalBitrate || (adjustedBitrate * input.cameras),
       bitrate_per_camera: bitratePerCamera || adjustedBitrate,
       retention_days: input.retention_days,
-      adjusted_bitrate: adjustedBitrate || (input.custom_bitrate || 4.0) * (input.codec === 'H.265' ? 0.6 : input.codec === 'H.264' ? 1.0 : 0.8)
+      adjusted_bitrate: adjustedBitrate || (input.custom_bitrate || 4.0) * (input.codec === 'H.265' ? 0.6 : input.codec === 'H.264' ? 1.0 : 0.8),
+      overhead_factor: 0 // No longer used, but required by interface
     };
     
     // Calculate daily_storage_tb if not provided (for backward compatibility)
@@ -680,6 +681,9 @@ function generateMockRecommendations(input: any): AIRecommendationResponse {
   
   console.log('🏷️ Best products found:', bestProduct, secondBestProduct);
 
+  // Round up to nearest whole TB for safety margin (calculate before using)
+  const totalUsableStorageTB = Math.ceil(totalStorageTB);
+
   const topProducts: StorageRecommendation[] = [
     {
       product_name: bestProduct,
@@ -714,9 +718,6 @@ function generateMockRecommendations(input: any): AIRecommendationResponse {
       key_benefits: secondProductSpecs.key_features
     }
   ];
-
-  // Round up to nearest whole TB for safety margin
-  const totalUsableStorageTB = Math.ceil(totalStorageTB);
   
   return {
     cached: false,
@@ -728,7 +729,8 @@ function generateMockRecommendations(input: any): AIRecommendationResponse {
       total_bitrate_mbps: adjustedBitrate * input.cameras,
       bitrate_per_camera: adjustedBitrate,
       retention_days: input.retention_days,
-      adjusted_bitrate: adjustedBitrate
+      adjusted_bitrate: adjustedBitrate,
+      overhead_factor: 0 // No longer used, but required by interface
     },
     recommendation: topProducts[0],
     top_products: topProducts,

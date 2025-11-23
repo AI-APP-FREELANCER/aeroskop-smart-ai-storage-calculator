@@ -60,7 +60,6 @@ export async function generateCSVReport(data: ExportData): Promise<string> {
   rows.push(createCSVRow(['Pre-Record Time (seconds)', data.formData.preRecordSeconds || 2]));
   rows.push(createCSVRow(['Post-Record Time (seconds)', data.formData.postRecordSeconds || 5]));
   rows.push(createCSVRow(['Number of Servers', data.formData.numberOfServers || 'N/A']));
-  rows.push(createCSVRow(['RAID Type', data.formData.raidType || 'N/A']));
   rows.push(createCSVRow(['HDDs per Server', data.formData.hddPerServer || 'N/A']));
   rows.push(createCSVRow(['Drive Capacity (TB)', data.formData.driveCapacityTB || 'N/A']));
   rows.push(createCSVRow(['Server Model', data.formData.serverModel || 'N/A']));
@@ -95,7 +94,7 @@ export async function generateCSVReport(data: ExportData): Promise<string> {
   rows.push(createCSVRow([
     'RAID Overhead',
     data.raidInfo ? `${data.raidInfo.overheadPercent.toFixed(1)}%` : 'N/A',
-    data.raidInfo ? `Automatically calculated for ${data.formData.raidType}` : 'No RAID configured'
+    data.raidInfo ? 'Automatically calculated' : 'No RAID configured'
   ]));
   rows.push(createCSVRow(['Retention Days', data.formData.retentionDays.toString(), 'Duration for which recordings are stored']));
   rows.push(createCSVRow([
@@ -106,10 +105,9 @@ export async function generateCSVReport(data: ExportData): Promise<string> {
   rows.push('');
   
   // Section 4: RAID/ZFS Protection Details (if applicable)
-  if (data.raidInfo && data.formData.raidType) {
+  if (data.raidInfo) {
     rows.push('=== RAID/ZFS PROTECTION DETAILS ===');
     rows.push(createCSVRow(['Parameter', 'Value']));
-    rows.push(createCSVRow(['RAID Type', data.formData.raidType]));
     rows.push(createCSVRow(['Number of Servers', (data.formData.numberOfServers || 1).toString()]));
     rows.push(createCSVRow(['HDDs per Server', (data.formData.hddPerServer || 0).toString()]));
     rows.push(createCSVRow(['Total HDDs', ((data.formData.numberOfServers || 1) * (data.formData.hddPerServer || 0)).toString()]));

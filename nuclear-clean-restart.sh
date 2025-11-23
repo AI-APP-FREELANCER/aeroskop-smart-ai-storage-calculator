@@ -72,7 +72,7 @@ echo "⚙️  Step 7: Setting up environment..."
 # Copy production.env to .env.local only if .env.local doesn't exist
 # This preserves any custom API keys that were set manually
 if [ ! -f .env.local ]; then
-    cp production.env .env.local
+cp production.env .env.local
     echo "✅ Environment file created from production.env"
     echo "⚠️  WARNING: GEMINI_API_KEY is set to placeholder value!"
     echo "⚠️  Please update .env.local with your actual Gemini API key:"

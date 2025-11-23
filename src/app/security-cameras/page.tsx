@@ -148,8 +148,8 @@ export default function SecurityCameras() {
                       className="object-contain transition-transform duration-500 group-hover:scale-110 p-3"
                       style={{ transform: 'scale(0.9)' }}
                     />
-                  </div>
-                  
+            </div>
+            
                   {/* 4. High-Level Catchy Text/Feature */}
                   <p className="text-slate-700 font-semibold mb-3 text-sm leading-relaxed">
                     {product.tagline}
@@ -174,13 +174,13 @@ export default function SecurityCameras() {
                         strokeWidth={2} 
                         d="M9 5l7 7-7 7" 
                       />
-                    </svg>
+                </svg>
                   </div>
                 </div>
               </Link>
             ))}
+            </div>
           </div>
-        </div>
       </section>
 
       {/* Footer */}

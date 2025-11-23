@@ -238,6 +238,7 @@ export interface StorageRecommendationRequest {
 
 export interface StorageCalculations {
   total_storage_tb: number;
+  total_usable_storage_tb?: number; // Optional: rounded up storage
   daily_storage_tb: number;
   daily_storage_per_camera_gb: number; // NEW
   total_bitrate_mbps: number;
