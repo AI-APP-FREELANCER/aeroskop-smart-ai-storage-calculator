@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { CalculatorForm, EnhancedStorageCalculation } from './types';
+import { CalculatorForm, EnhancedStorageCalculation, AIRecommendationResponse } from './types';
 
 interface ProductSpecs {
   [key: string]: any;
@@ -265,4 +265,178 @@ export async function generateEnhancedPDFReport(data: ExportData): Promise<void>
   
   // Save PDF
   doc.save(`Storage_Calculator_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+}
+
+// PDF Report Generator for AI Recommendations
+export async function generatePDFReport(recommendations: AIRecommendationResponse): Promise<void> {
+  const doc = new jsPDF();
+  
+  // Set font
+  doc.setFont('helvetica');
+  
+  let yPosition = 20;
+  
+  // Header
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Aeroskope Systems', 14, yPosition);
+  
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'normal');
+  doc.text('AI Storage Recommendation Report', 14, yPosition + 10);
+  
+  doc.setFontSize(10);
+  doc.text(`Generated on: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`, 14, yPosition + 18);
+  
+  yPosition += 30;
+  
+  // Section 1: Storage Calculations
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Storage Calculations', 14, yPosition);
+  yPosition += 10;
+  
+  const calcData = [
+    ['Metric', 'Value'],
+    ['Total Storage Required (TB)', recommendations.calculations.total_storage_tb.toFixed(2)],
+    ['Daily Storage (TB)', recommendations.calculations.daily_storage_tb.toFixed(2)],
+    ['Daily Storage per Camera (GB)', recommendations.calculations.daily_storage_per_camera_gb?.toFixed(2) || 'N/A'],
+    ['Total Bitrate (Mbps)', recommendations.calculations.total_bitrate_mbps.toFixed(2)],
+    ['Bitrate per Camera (Mbps)', recommendations.calculations.bitrate_per_camera?.toFixed(2) || 'N/A'],
+    ['Retention Days', recommendations.calculations.retention_days.toString()],
+  ];
+  
+  autoTable(doc, {
+    startY: yPosition,
+    head: [calcData[0]],
+    body: calcData.slice(1),
+    theme: 'striped',
+    headStyles: {
+      fillColor: [37, 99, 235],
+      textColor: 255,
+      fontStyle: 'bold',
+    },
+    styles: {
+      fontSize: 9,
+      cellPadding: 3,
+    },
+    columnStyles: {
+      0: { cellWidth: 80, fontStyle: 'bold' },
+      1: { cellWidth: 110 },
+    },
+    margin: { left: 14, right: 14 },
+  });
+  
+  yPosition = (doc as any).lastAutoTable.finalY + 15;
+  
+  // Section 2: Recommended Product
+  if (yPosition > 250) {
+    doc.addPage();
+    yPosition = 20;
+  }
+  
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Recommended Product', 14, yPosition);
+  yPosition += 10;
+  
+  const product = recommendations.recommendation;
+  const productData = [
+    ['Property', 'Details'],
+    ['Product Name', product.product_name],
+    ['Model', product.product_model],
+    ['Channel Capacity', product.channel_capacity],
+    ['Storage Capacity (TB)', product.storage_capacity_tb.toString()],
+    ['CPU', product.cpu],
+    ['RAM', product.ram],
+    ['RAID Support', product.raid_support],
+  ];
+  
+  autoTable(doc, {
+    startY: yPosition,
+    head: [productData[0]],
+    body: productData.slice(1),
+    theme: 'striped',
+    headStyles: {
+      fillColor: [37, 99, 235],
+      textColor: 255,
+      fontStyle: 'bold',
+    },
+    styles: {
+      fontSize: 9,
+      cellPadding: 3,
+    },
+    columnStyles: {
+      0: { cellWidth: 80, fontStyle: 'bold' },
+      1: { cellWidth: 110 },
+    },
+    margin: { left: 14, right: 14 },
+  });
+  
+  yPosition = (doc as any).lastAutoTable.finalY + 15;
+  
+  // Section 3: Key Benefits
+  if (yPosition > 250) {
+    doc.addPage();
+    yPosition = 20;
+  }
+  
+  if (product.pros && product.pros.length > 0) {
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Key Benefits', 14, yPosition);
+    yPosition += 10;
+    
+    const prosData = product.pros.map((pro, index) => [`${index + 1}.`, pro]);
+    
+    autoTable(doc, {
+      startY: yPosition,
+      body: prosData,
+      theme: 'striped',
+      styles: {
+        fontSize: 9,
+        cellPadding: 3,
+      },
+      columnStyles: {
+        0: { cellWidth: 15 },
+        1: { cellWidth: 175 },
+      },
+      margin: { left: 14, right: 14 },
+    });
+    
+    yPosition = (doc as any).lastAutoTable.finalY + 15;
+  }
+  
+  // Section 4: Summary
+  if (yPosition > 250) {
+    doc.addPage();
+    yPosition = 20;
+  }
+  
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Summary', 14, yPosition);
+  yPosition += 10;
+  
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  const summaryLines = doc.splitTextToSize(recommendations.summary, 180);
+  doc.text(summaryLines, 14, yPosition);
+  
+  // Footer on each page
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'italic');
+    doc.text(
+      `AI-powered recommendations. Copyright ${new Date().getFullYear()} Aeroskope Systems.`,
+      105,
+      285,
+      { align: 'center' }
+    );
+  }
+  
+  // Save PDF
+  doc.save(`AI_Storage_Recommendation_${new Date().toISOString().split('T')[0]}.pdf`);
 }

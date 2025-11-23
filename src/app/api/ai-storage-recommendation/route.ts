@@ -36,7 +36,8 @@ export async function POST(request: NextRequest) {
       activity_percent: body.activity_percent > 0 ? body.activity_percent : 1,
       retention_days: body.retention_days > 0 ? body.retention_days : 1,
       recording_hours_per_day: body.recording_hours_per_day > 0 ? body.recording_hours_per_day : 1,
-      custom_bitrate: body.custom_bitrate !== undefined && body.custom_bitrate > 0 ? body.custom_bitrate : undefined
+      custom_bitrate: body.custom_bitrate !== undefined && body.custom_bitrate > 0 ? body.custom_bitrate : undefined,
+      custom_fps: body.custom_fps !== undefined && body.custom_fps > 0 ? body.custom_fps : undefined
     };
     
     // Log validation results

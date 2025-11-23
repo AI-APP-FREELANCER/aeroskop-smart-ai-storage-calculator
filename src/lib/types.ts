@@ -233,6 +233,7 @@ export interface StorageRecommendationRequest {
   pre_record_seconds?: number;
   post_record_seconds?: number;
   custom_bitrate?: number;
+  custom_fps?: number;
 }
 
 export interface StorageCalculations {
