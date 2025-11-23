@@ -1,0 +1,188 @@
+\documentclass[11pt,a4paper]{article}
+
+% Required packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{fancyhdr}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{lastpage}
+\usepackage{lipsum}
+
+% Page setup
+\pagestyle{fancy}
+\fancyhf{} % Clear all headers and footers
+
+% Header setup
+% Note: Uncomment the line below and add your logo file, or leave commented for text-only header
+% \fancyhead[L]{\includegraphics[height=0.8cm]{logo_placeholder.png}} % Logo placeholder
+\fancyhead[L]{\textbf{Aeroskope Systems}}
+\fancyhead[R]{\textbf{Technical Specification}}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% Footer setup
+\fancyfoot[C]{\small Specifications subject to change without notice. Copyright \the\year.}
+\renewcommand{\footrulewidth}{0.4pt}
+
+% Custom command for product specification page
+\newcommand{\ProductSpecPage}[4]{%
+    \newpage
+    \thispagestyle{fancy}
+    
+    % Product Title Section
+    \begin{center}
+        \vspace*{0.5cm}
+        {\Huge\bfseries #1}\\[0.3cm]
+        {\Large\bfseries Model: #2}\\[0.5cm]
+    \end{center}
+    
+    % Highlights Section
+    \vspace{0.3cm}
+    \noindent\textbf{\large Highlights:}\\[0.2cm]
+    \noindent\parbox{\textwidth}{#3}
+    \vspace{0.5cm}
+    
+    % Technical Specifications Table
+    \noindent\textbf{\large Technical Specifications:}\\[0.3cm]
+    #4
+    
+    \vfill
+}
+
+% Document begins
+\begin{document}
+
+% First Product: ASK-5D Dome Camera
+\ProductSpecPage{ASK-5D Dome Camera}{ASK-5D-IR}{%
+The ASK-5D-IR is a high-performance 5MP dome camera designed for indoor and outdoor surveillance applications. Featuring advanced IR night vision capabilities, wide dynamic range (WDR), and intelligent motion detection, this camera delivers exceptional image quality in all lighting conditions. Built with an IP67 weatherproof rating, it ensures reliable operation in harsh environments. The camera supports H.265/H.264 dual codec compression, reducing bandwidth and storage requirements while maintaining superior video quality.
+}{%
+\begin{longtable}{@{}p{4cm}X@{}}
+\toprule
+\textbf{Specification} & \textbf{Details} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Specification} & \textbf{Details} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+\bottomrule
+\endlastfoot
+
+\textbf{Image Sensor} & 1/2.7" Progressive Scan CMOS \\
+\textbf{Effective Pixels} & 5 Megapixels (2592 × 1944) \\
+\textbf{Max Resolution} & 2592 × 1944 @ 20fps \\
+\textbf{Video Compression} & H.265/H.264/MJPEG (Triple Codec) \\
+\textbf{Frame Rate} & 1fps to 20fps (adjustable) \\
+\textbf{Bit Rate} & 32 Kbps to 8 Mbps (adjustable) \\
+\textbf{Image Settings} & Brightness, Contrast, Saturation, Sharpness, Gamma \\
+\textbf{Day/Night} & Auto (ICR), Color, B/W \\
+\textbf{Min. Illumination} & 0.01 Lux @ F1.2 (Color), 0.001 Lux @ F1.2 (B/W) \\
+\textbf{Wide Dynamic Range} & 120dB Digital WDR \\
+\textbf{Noise Reduction} & 2D/3D Digital Noise Reduction \\
+\textbf{Backlight Compensation} & BLC, HLC, WDR \\
+\textbf{IR Range} & Up to 30 meters (98 feet) \\
+\textbf{IR LEDs} & 2 × High-Power IR LEDs \\
+\textbf{Lens} & 2.8mm Fixed Lens (3.6mm, 6mm optional) \\
+\textbf{Lens Mount} & M12 \\
+\textbf{Field of View} & 2.8mm: 100° (H) × 55° (V) \\
+\textbf{Focus} & Fixed Focus \\
+\textbf{Digital Zoom} & 16× \\
+\textbf{PTZ} & Digital PTZ (4 preset positions) \\
+\textbf{Network} & 10/100 Mbps Ethernet (RJ45) \\
+\textbf{Protocols} & TCP/IP, HTTP, HTTPS, RTSP, RTMP, ONVIF, DHCP, DNS, DDNS, NTP, FTP, SMTP, UPnP, SNMP, 802.1x, QoS \\
+\textbf{Streaming} & Triple Stream (Main, Sub, Third) \\
+\textbf{Max. Users} & 10 simultaneous users \\
+\textbf{Storage} & MicroSD/SDHC/SDXC card slot (up to 256GB) \\
+\textbf{Alarm I/O} & 1 × Input, 1 × Output \\
+\textbf{Audio} & 1 × Input, 1 × Output (optional) \\
+\textbf{Power Supply} & DC 12V ± 10\%, PoE (802.3af) \\
+\textbf{Power Consumption} & 5W (12V DC), 6.5W (PoE) \\
+\textbf{Operating Temperature} & -30°C to +60°C (-22°F to +140°F) \\
+\textbf{Operating Humidity} & 10\% to 90\% RH (non-condensing) \\
+\textbf{Ingress Protection} & IP67 \\
+\textbf{Vandal Resistance} & IK10 \\
+\textbf{Material} & Metal Housing \\
+\textbf{Dimensions} & Ø 120 × 80mm (4.7" × 3.1") \\
+\textbf{Weight} & 450g (0.99 lbs) \\
+\textbf{Mounting} & Ceiling, Wall, Corner \\
+\textbf{Compliance} & CE, FCC, RoHS \\
+\textbf{Warranty} & 3 Years Limited Warranty \\
+
+\end{longtable}
+}
+
+% Second Product: ASK-8B Bullet Camera
+\ProductSpecPage{ASK-8B Bullet Camera}{ASK-8B-VF-IR}{%
+The ASK-8B-VF-IR is a professional-grade 8MP bullet camera featuring a vari-focal lens system for flexible installation and optimal field of view adjustment. This camera excels in outdoor surveillance applications with its robust weatherproof design and extended IR range. The advanced image sensor delivers ultra-high definition video with exceptional detail capture. Equipped with intelligent analytics including motion detection, tampering alarm, and intrusion detection, this camera provides comprehensive security monitoring capabilities. The vari-focal lens allows remote adjustment from 2.8mm to 12mm, enabling precise coverage optimization without physical access to the camera.
+}{%
+\begin{longtable}{@{}p{4cm}X@{}}
+\toprule
+\textbf{Specification} & \textbf{Details} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Specification} & \textbf{Details} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+\bottomrule
+\endlastfoot
+
+\textbf{Image Sensor} & 1/2.5" Progressive Scan CMOS \\
+\textbf{Effective Pixels} & 8 Megapixels (3840 × 2160) \\
+\textbf{Max Resolution} & 3840 × 2160 (4K UHD) @ 20fps \\
+\textbf{Video Compression} & H.265+/H.265/H.264+/H.264/MJPEG \\
+\textbf{Frame Rate} & 1fps to 20fps (adjustable) \\
+\textbf{Bit Rate} & 32 Kbps to 16 Mbps (adjustable) \\
+\textbf{Smart Codec} & H.265+/H.264+ (up to 50\% bandwidth reduction) \\
+\textbf{Image Settings} & Brightness, Contrast, Saturation, Sharpness, Gamma, White Balance \\
+\textbf{Day/Night} & Auto (ICR), Color, B/W, Schedule \\
+\textbf{Min. Illumination} & 0.005 Lux @ F1.2 (Color), 0.0005 Lux @ F1.2 (B/W) \\
+\textbf{Wide Dynamic Range} & 140dB Digital WDR \\
+\textbf{Noise Reduction} & 3D Digital Noise Reduction \\
+\textbf{Backlight Compensation} & BLC, HLC, WDR, Defog \\
+\textbf{IR Range} & Up to 50 meters (164 feet) \\
+\textbf{IR LEDs} & 4 × High-Power IR LEDs with Smart IR \\
+\textbf{Lens} & Vari-Focal: 2.8mm - 12mm (Motorized) \\
+\textbf{Lens Mount} & M12 \\
+\textbf{Field of View} & 2.8mm: 110° (H) × 58° (V), 12mm: 30° (H) × 17° (V) \\
+\textbf{Focus} & Auto Focus (Remote Adjustable) \\
+\textbf{Digital Zoom} & 16× \\
+\textbf{PTZ} & Digital PTZ (8 preset positions, 4 patrol routes) \\
+\textbf{Network} & 10/100/1000 Mbps Ethernet (RJ45) \\
+\textbf{Protocols} & TCP/IP, HTTP, HTTPS, RTSP, RTMP, RTMPS, ONVIF (Profile S, T), DHCP, DNS, DDNS, NTP, FTP, SMTP, UPnP, SNMP, 802.1x, QoS, IPv6 \\
+\textbf{Streaming} & Triple Stream (Main, Sub, Third) \\
+\textbf{Max. Users} & 20 simultaneous users \\
+\textbf{Storage} & MicroSD/SDHC/SDXC card slot (up to 256GB), NAS \\
+\textbf{Alarm I/O} & 1 × Input, 1 × Output \\
+\textbf{Audio} & 1 × Input (Line-in), 1 × Output (Line-out) \\
+\textbf{Two-Way Audio} & Built-in Speaker and Microphone (optional) \\
+\textbf{Power Supply} & DC 12V ± 10\%, PoE+ (802.3at) \\
+\textbf{Power Consumption} & 7W (12V DC), 9W (PoE+) \\
+\textbf{Operating Temperature} & -40°C to +70°C (-40°F to +158°F) \\
+\textbf{Operating Humidity} & 10\% to 95\% RH (non-condensing) \\
+\textbf{Ingress Protection} & IP67 \\
+\textbf{Vandal Resistance} & IK10 \\
+\textbf{Material} & Aluminum Alloy Housing \\
+\textbf{Dimensions} & 280 × 95 × 95mm (11.0" × 3.7" × 3.7") \\
+\textbf{Weight} & 850g (1.87 lbs) \\
+\textbf{Mounting} & Wall, Ceiling, Pole Mount \\
+\textbf{Smart Features} & Motion Detection, Tampering Alarm, Intrusion Detection, Line Crossing, Area Entrance/Exit, Face Detection, People Counting \\
+\textbf{AI Analytics} & Human Detection, Vehicle Detection, Object Classification \\
+\textbf{Compliance} & CE, FCC, RoHS, IP67, IK10 \\
+\textbf{Warranty} & 3 Years Limited Warranty \\
+
+\end{longtable}
+}
+
+\end{document}
+

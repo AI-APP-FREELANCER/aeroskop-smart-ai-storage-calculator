@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import Header from "@/components/Header";
 import Tabs from "@/components/Tabs";
 import ProductBanner from "@/components/ProductBanner";
+import { generateProductSpecPDF } from "@/lib/pdfGenerator";
 
 // Helper function to get image path based on product model
 const getImagePath = (model: string): string => {
@@ -373,7 +374,20 @@ export default function POESwitchProductDetailPage() {
       {/* Technical Specifications Section */}
       <section className="pt-8 pb-16 bg-white">
         <div className="container mx-auto px-4 max-w-5xl">
-          <h2 className="text-2xl font-bold text-slate-900 mb-8">Technical Specifications</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+            <h2 className="text-2xl font-bold text-slate-900">Technical Specifications</h2>
+            <button
+              onClick={() => {
+                generateProductSpecPDF(product.name, product.model, product.tagline, product.specs);
+              }}
+              className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors shadow-md hover:shadow-lg"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Download PDF Specs
+            </button>
+          </div>
           
           <Tabs
             tabs={[
