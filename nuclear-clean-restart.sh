@@ -22,9 +22,21 @@ pkill -9 -f "npm" 2>/dev/null || true
 pkill -9 -f "next" 2>/dev/null || true
 pkill -9 -f "node.*next" 2>/dev/null || true
 sudo killall -9 node 2>/dev/null || true
-sudo kill -9 $(sudo lsof -t -i:3000) 2>/dev/null || true
-sudo kill -9 $(sudo lsof -t -i:3001) 2>/dev/null || true
-sudo kill -9 $(sudo lsof -t -i:3002) 2>/dev/null || true
+
+# Kill processes on ports using ss (more reliable than lsof)
+for port in 3000 3001 3002; do
+  PID=$(sudo ss -tlnp 2>/dev/null | grep ":$port " | awk '{print $6}' | cut -d',' -f2 | cut -d'=' -f2 | head -1)
+  if [ ! -z "$PID" ]; then
+    echo "Killing process $PID on port $port"
+    sudo kill -9 $PID 2>/dev/null || true
+  fi
+done
+
+# Also try with fuser if available
+sudo fuser -k 3000/tcp 2>/dev/null || true
+sudo fuser -k 3001/tcp 2>/dev/null || true
+sudo fuser -k 3002/tcp 2>/dev/null || true
+
 sleep 3
 echo "✅ All processes killed"
 
@@ -285,7 +297,7 @@ else
     echo "🔍 TROUBLESHOOTING:"
     echo "   1. Check if dev server is running: ps aux | grep 'npm run dev'"
     echo "   2. Check logs: tail -f app.log"
-    echo "   3. Check port 3000: sudo netstat -tlnp | grep 3000"
+    echo "   3. Check port 3000: sudo ss -tlnp | grep 3000"
     echo "   4. Check nginx logs: sudo tail -f /var/log/nginx/error.log"
     echo "   5. Try starting manually: cd /home/ubuntu/aeroskop/aeroskop-smart-ai-storage-calculator && PORT=3000 npm run dev"
 fi
@@ -295,7 +307,7 @@ echo "📋 Useful Commands:"
 echo "   View logs: tail -f app.log"
 echo "   Restart: pkill -f 'npm run dev' && PORT=3000 npm run dev > app.log 2>&1 &"
 echo "   Check status: ps aux | grep 'npm run dev'"
-echo "   Check port: sudo netstat -tlnp | grep 3000"
+echo "   Check port: sudo ss -tlnp | grep 3000"
 echo ""
 echo "⚠️  IMPORTANT: Clear your browser cache or use Incognito mode!"
 echo ""
