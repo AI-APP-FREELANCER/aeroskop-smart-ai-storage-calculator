@@ -33,7 +33,7 @@ export default function RootLayout({
           strategy="afterInteractive"
         />
         <link rel="preconnect" href="https://ext.same-assets.com" />
-        <meta httpEquiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https://ext.same-assets.com https://unpkg.com data: blob:; img-src 'self' data: blob: https://aeroskop-images-space-bucket.sgp1.digitaloceanspaces.com https://*.digitaloceanspaces.com; connect-src 'self' http://localhost:* https://* ws: wss: http://unpkg.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com http://unpkg.com; script-src-elem 'self' 'unsafe-inline' https://unpkg.com http://unpkg.com; style-src 'self' 'unsafe-inline';" />
+        <meta httpEquiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https://ext.same-assets.com https://unpkg.com data: blob:; img-src 'self' data: blob: https://*.digitaloceanspaces.com https://aeroskop-images-space-bucket.sgp1.digitaloceanspaces.com; connect-src 'self' http://localhost:* https://* ws: wss: http://unpkg.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com http://unpkg.com; script-src-elem 'self' 'unsafe-inline' https://unpkg.com http://unpkg.com; style-src 'self' 'unsafe-inline';" />
       </head>
       <body suppressHydrationWarning className="antialiased">
         <ClientBody>{children}</ClientBody>
