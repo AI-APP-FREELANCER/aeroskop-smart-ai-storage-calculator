@@ -2,11 +2,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { DO_ASSET_BASE_URL } from "@/lib/constants";
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [openProducts, setOpenProducts] = useState(false);
-  const [openAdmin, setOpenAdmin] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -26,7 +26,7 @@ export default function Header() {
       <div className="container flex items-center gap-6 py-3" role="navigation" aria-label="Primary">
         <Link href="/" className="flex items-center gap-3" aria-label="Aeroskop home">
           <Image
-            src="/images/company_logo/aeroskop_logo.png"
+            src={`${DO_ASSET_BASE_URL}/company_logo/aeroskop_logo.webp`}
             alt="Aeroskop"
             width={120}
             height={40}
@@ -125,57 +125,6 @@ export default function Header() {
                       </div>
                     </Link>
                   ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Admin Dropdown */}
-          <div
-            className="relative"
-            onMouseEnter={() => setOpenAdmin(true)}
-            onMouseLeave={() => setOpenAdmin(false)}
-          >
-            <button
-              className="text-sm font-medium text-slate-700 hover:text-blue-600 focus:outline-none"
-              aria-haspopup="menu"
-              aria-expanded={openAdmin}
-            >
-              Admin
-            </button>
-            {openAdmin && (
-              <div className="absolute left-1/2 top-full z-50 -translate-x-1/2 pt-3">
-                <div className="w-64 rounded-xl border border-slate-200 bg-white/90 p-4 shadow-2xl backdrop-blur">
-                  <div className="space-y-2">
-                    {[
-                      {
-                        href: "/admin",
-                        title: "Dashboard",
-                        desc: "Overview of key metrics and system health"
-                      },
-                      {
-                        href: "/admin/analytics",
-                        title: "Analytics",
-                        desc: "Detailed user analytics and behavior tracking"
-                      },
-                      {
-                        href: "/admin/monitoring",
-                        title: "Monitoring",
-                        desc: "Page analytics, click streams, and AI usage"
-                      }
-                    ].map((item) => (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className="group flex flex-col rounded-lg p-3 hover:bg-slate-50"
-                      >
-                        <div className="text-sm font-semibold text-slate-900">
-                          {item.title}
-                        </div>
-                        <p className="mt-1 text-xs text-slate-600">{item.desc}</p>
-                      </Link>
-                    ))}
-                  </div>
                 </div>
               </div>
             )}

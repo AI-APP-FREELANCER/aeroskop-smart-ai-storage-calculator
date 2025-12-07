@@ -7,6 +7,8 @@ import { generateEnhancedPDFReport } from '@/lib/pdfGenerator';
 import { generateExcelReport } from '@/lib/excelGenerator';
 import { generateCSVReport } from '@/lib/csvGenerator';
 import { AIRecommendationResponse, CalculatorForm, EnhancedStorageCalculation } from '@/lib/types';
+import { formatStorage, formatDailyStorage, formatDailyStorageAlwaysGB } from '@/lib/storageFormatter';
+import LoginModal from '@/components/LoginModal';
 
 interface EnhancedUnifiedAICalculatorProps {
   className?: string;
@@ -23,8 +25,6 @@ interface ChatMessage {
     isSystemMessage?: boolean;
   };
 }
-
-import { formatStorage, formatDailyStorage, formatDailyStorageAlwaysGB } from '@/lib/storageFormatter';
 
 export default function EnhancedUnifiedAICalculator({ className = '' }: EnhancedUnifiedAICalculatorProps) {
   // Calculator states
@@ -68,6 +68,19 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
   const [sessionId] = useState('enhanced-session-' + Date.now());
+
+  // User capture states
+  const [userCaptured, setUserCaptured] = useState(() => {
+    // Check localStorage on component mount
+    if (typeof window !== 'undefined') {
+      const captured = localStorage.getItem('userCaptured') === 'true';
+      console.log('🔍 Initial userCaptured state from localStorage:', captured);
+      return captured;
+    }
+    return false;
+  });
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [tempFormData, setTempFormData] = useState<CalculatorForm | null>(null);
 
   // Auto-scroll to results when calculations are done
   useEffect(() => {
@@ -154,7 +167,73 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
 
 
 
+  const handleUserSubmit = async (userInfo: any) => {
+    try {
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          first_name: userInfo.firstName,
+          last_name: userInfo.lastName,
+          email: userInfo.email,
+          country_code: userInfo.countryCode,
+          phone_number: userInfo.phoneNumber,
+          company: userInfo.company,
+        }),
+      });
+
+      if (response.ok) {
+        const user = await response.json();
+        console.log('User registered successfully:', user);
+        setUserCaptured(true);
+        // Persist to localStorage
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('userCaptured', 'true');
+        }
+        setIsLoginModalOpen(false);
+        
+        // Restore form data if it was saved
+        if (tempFormData) {
+          setFormData(tempFormData);
+          setTempFormData(null);
+          // Trigger calculation after user is captured
+          setTimeout(() => {
+            performCalculation();
+          }, 100);
+        }
+      } else {
+        const error = await response.json();
+        console.error('Registration failed:', error);
+        throw new Error(error.error || 'Registration failed');
+      }
+    } catch (error) {
+      console.error('Error registering user:', error);
+      throw error;
+    }
+  };
+
   const handleCalculate = async () => {
+    console.log('🔘 Calculate button clicked');
+    console.log('👤 User captured status:', userCaptured);
+    
+    // Check if user has been captured
+    if (!userCaptured) {
+      console.log('📝 User not captured, showing login modal');
+      // Save current form data temporarily
+      setTempFormData({ ...formData });
+      // Show login modal
+      setIsLoginModalOpen(true);
+      return;
+    }
+    
+    console.log('✅ User captured, proceeding with calculation');
+    // User is captured, proceed with calculation
+    await performCalculation();
+  };
+
+  const performCalculation = async () => {
     // Front-end validation with guardrails
     const cameras = Number(formData.cameras) || 1;
     const activityPercent = formData.activityPercent || 1;
@@ -854,7 +933,16 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
 
             {/* Calculate Button */}
             <button
-              onClick={handleCalculate}
+              onClick={(e) => {
+                console.log('🔘 Button clicked!', { 
+                  isCalculating, 
+                  cameras: formData.cameras,
+                  userCaptured,
+                  buttonDisabled: isCalculating || !formData.cameras
+                });
+                e.preventDefault();
+                handleCalculate();
+              }}
               disabled={isCalculating || !formData.cameras}
               className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:bg-gray-300/50 disabled:opacity-60 backdrop-blur-sm text-white font-semibold py-3 px-6 rounded-xl shadow-[0_4px_14px_0_rgba(59,130,246,0.3)] hover:shadow-[0_6px_20px_rgba(59,130,246,0.4)] hover:brightness-110 transition-all duration-200 flex items-center justify-center gap-2"
             >
@@ -1184,11 +1272,35 @@ export default function EnhancedUnifiedAICalculator({ className = '' }: Enhanced
                             View Product Details →
                           </a>
                         )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
+        </div>
+      </div>
+
+      {/* Login Modal for User Capture */}
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => {
+          console.log('🚪 Login modal closed');
+          setIsLoginModalOpen(false);
+          // Restore form data if user closes modal without submitting
+          if (tempFormData) {
+            console.log('📝 Restoring form data from temp storage');
+            setFormData(tempFormData);
+            setTempFormData(null);
+          }
+        }}
+        onSubmit={async (userInfo) => {
+          console.log('📝 Login modal submit triggered');
+          try {
+            await handleUserSubmit(userInfo);
+          } catch (error) {
+            console.error('❌ Error in handleUserSubmit:', error);
+            // Keep modal open on error
+          }
+        }}
+      />
+    </div>
+  );
+})()}
 
             </>
           )}

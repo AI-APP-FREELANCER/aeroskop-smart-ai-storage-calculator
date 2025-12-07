@@ -1,5 +1,7 @@
 'use client';
 
+import { DO_ASSET_BASE_URL } from '@/lib/constants';
+
 interface Article {
   id: string;
   title: string;
@@ -22,7 +24,7 @@ const defaultArticles: Article[] = [
     id: 'storage-optimization-tips',
     title: '5 Essential Storage Optimization Tips for Surveillance Systems',
     excerpt: 'Learn how to maximize your surveillance storage efficiency with these proven optimization techniques and best practices.',
-    image: '/images/articles/storage-optimization.jpg',
+    image: `${DO_ASSET_BASE_URL}/articles/storage-optimization.webp`,
     date: '2024-01-15',
     category: 'Technical Guide',
     readTime: '5 min read',
@@ -32,7 +34,7 @@ const defaultArticles: Article[] = [
     id: 'ai-recommendations-benefits',
     title: 'How AI-Powered Storage Recommendations Save You Money',
     excerpt: 'Discover how intelligent storage recommendations can reduce costs by up to 40% while improving system performance.',
-    image: '/images/articles/ai-benefits.jpg',
+    image: `${DO_ASSET_BASE_URL}/articles/ai-benefits.webp`,
     date: '2024-01-10',
     category: 'AI Technology',
     readTime: '7 min read',
@@ -42,7 +44,7 @@ const defaultArticles: Article[] = [
     id: 'enterprise-deployment-guide',
     title: 'Enterprise Surveillance Storage: A Complete Deployment Guide',
     excerpt: 'Everything you need to know about deploying large-scale surveillance storage solutions for enterprise environments.',
-    image: '/images/articles/enterprise-guide.jpg',
+    image: `${DO_ASSET_BASE_URL}/articles/enterprise-guide.webp`,
     date: '2024-01-05',
     category: 'Enterprise',
     readTime: '12 min read',
@@ -52,7 +54,7 @@ const defaultArticles: Article[] = [
     id: 'product-comparison-2024',
     title: 'Aeroskop Storage Solutions: Complete Product Comparison 2024',
     excerpt: 'Compare all Aeroskop storage solutions side-by-side to find the perfect fit for your surveillance requirements.',
-    image: '/images/articles/product-comparison.jpg',
+    image: `${DO_ASSET_BASE_URL}/articles/product-comparison.webp`,
     date: '2024-01-01',
     category: 'Product Review',
     readTime: '8 min read',

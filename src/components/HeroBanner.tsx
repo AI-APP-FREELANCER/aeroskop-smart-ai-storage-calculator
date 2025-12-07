@@ -1,7 +1,8 @@
 'use client';
 
 import Image from 'next/image';
-import { useMemo } from 'react';
+import { useState, useEffect } from 'react';
+import { DO_ASSET_BASE_URL } from '@/lib/constants';
 
 interface HeroBannerProps {
   imagePath?: string;
@@ -10,12 +11,12 @@ interface HeroBannerProps {
   excludeBanner?: string; // Banner to exclude from random selection
 }
 
-// Available banners for random selection (excluding Hero-Banner-Home-2.png which is reserved for Home Page)
+// Available banners for random selection (excluding Hero-Banner-Home-2.webp which is reserved for Home Page)
 const availableBanners = [
-  '/images/Hero-Banners/Hero-Banner-Home-1.png',
-  '/images/Hero-Banners/Hero-Banner-Home-1-1.png',
-  '/images/Hero-Banners/Hero-Banner-Home-1-2.png',
-  '/images/Hero-Banners/Hero-Banner-Home-1-3.png',
+  `${DO_ASSET_BASE_URL}/Hero-Banners/Hero-Banner-Home-1.webp`,
+  `${DO_ASSET_BASE_URL}/Hero-Banners/Hero-Banner-Home-1-1.webp`,
+  `${DO_ASSET_BASE_URL}/Hero-Banners/Hero-Banner-Home-1-2.webp`,
+  `${DO_ASSET_BASE_URL}/Hero-Banners/Hero-Banner-Home-1-3.webp`,
 ];
 
 export default function HeroBanner({ 
@@ -24,19 +25,30 @@ export default function HeroBanner({
   showTextOverlay = false,
   excludeBanner
 }: HeroBannerProps) {
-  // Randomly select a banner if no specific image path is provided
-  const selectedBanner = useMemo(() => {
+  // Use a stable default for SSR, then update on client
+  const [selectedBanner, setSelectedBanner] = useState(() => {
     if (imagePath) {
       return imagePath;
     }
-    // Filter out excluded banner if provided
+    // Use first banner as default for SSR (prevents hydration mismatch)
     const bannersToChooseFrom = excludeBanner 
       ? availableBanners.filter(banner => banner !== excludeBanner)
       : availableBanners;
-    
-    // Random selection from available banners
-    const randomIndex = Math.floor(Math.random() * bannersToChooseFrom.length);
-    return bannersToChooseFrom[randomIndex] || availableBanners[0];
+    return bannersToChooseFrom[0] || availableBanners[0];
+  });
+
+  // Randomly select a banner on client-side only (after hydration)
+  useEffect(() => {
+    if (!imagePath) {
+      // Filter out excluded banner if provided
+      const bannersToChooseFrom = excludeBanner 
+        ? availableBanners.filter(banner => banner !== excludeBanner)
+        : availableBanners;
+      
+      // Random selection from available banners (client-side only)
+      const randomIndex = Math.floor(Math.random() * bannersToChooseFrom.length);
+      setSelectedBanner(bannersToChooseFrom[randomIndex] || availableBanners[0]);
+    }
   }, [imagePath, excludeBanner]);
 
   return (

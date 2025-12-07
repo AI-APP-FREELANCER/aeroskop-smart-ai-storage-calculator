@@ -1,5 +1,7 @@
 'use client';
 
+import { DO_ASSET_BASE_URL } from '@/lib/constants';
+
 interface Product {
   id: string;
   name: string;
@@ -23,7 +25,7 @@ const defaultProducts: Product[] = [
     name: 'AeroFlex AF-1632 NVR',
     category: 'All-in-One Solution',
     description: 'Compact NVR solution for small to medium businesses with expandable storage and professional graphics.',
-    image: '/images/products/aeroflex-1632.jpg',
+    image: `${DO_ASSET_BASE_URL}/products/aeroflex-1632.webp`,
     specs: ['16-32 Channels', 'Intel Core i5', '16GB RAM', '9x HDD Bays'],
     features: ['VMS + Recording', 'Workstation + Video Wall', 'NVIDIA T 400 4GB'],
     bestFor: 'Small to medium businesses, 16-32 cameras'
@@ -33,7 +35,7 @@ const defaultProducts: Product[] = [
     name: 'AeroFlex AF-3264 NVR',
     category: 'Mid-Range Solution',
     description: 'Powerful NVR for medium to large businesses with enhanced processing and storage capabilities.',
-    image: '/images/products/aeroflex-3264.jpg',
+    image: `${DO_ASSET_BASE_URL}/products/aeroflex-3264.webp`,
     specs: ['32-64 Channels', 'Intel Core i7', '32GB RAM', '9x HDD Bays'],
     features: ['VMS + Recording', 'Workstation + Video Wall', 'NVIDIA RTX 1000 4GB'],
     bestFor: 'Medium to large businesses, 32-64 cameras'
@@ -43,7 +45,7 @@ const defaultProducts: Product[] = [
     name: 'AeroFlex AF-64128 NVR',
     category: 'Enterprise Solution',
     description: 'Enterprise-grade NVR with maximum performance and redundancy for large-scale deployments.',
-    image: '/images/products/aeroflex-64128.jpg',
+    image: `${DO_ASSET_BASE_URL}/products/aeroflex-64128.webp`,
     specs: ['64-128 Channels', 'Intel Core i9', '64GB RAM', '9x HDD Bays'],
     features: ['VMS + Recording', 'Workstation + Video Wall', 'NVIDIA RTX A2000 12GB'],
     bestFor: 'Large enterprises, 64-128 cameras'
@@ -53,7 +55,7 @@ const defaultProducts: Product[] = [
     name: 'Aeroskop Rhino ASK-SR212',
     category: '2U Storage Server',
     description: 'High-capacity storage server with enterprise-grade reliability and hot-swappable drives.',
-    image: '/images/products/rhino-sr212.jpg',
+    image: `${DO_ASSET_BASE_URL}/products/rhino-sr212.webp`,
     specs: ['12x HDD Bays', '240TB Raw Capacity', 'Dual Xeon Silver', '64GB DDR5 ECC'],
     features: ['Hot-swappable Drives', 'IPMI Management', 'Dual Redundant PSU'],
     bestFor: 'High-capacity storage, 250-350 cameras'
@@ -63,7 +65,7 @@ const defaultProducts: Product[] = [
     name: 'Aeroskop Rhino ASK-SR224',
     category: '4U Storage Server',
     description: 'Enterprise storage server with maximum capacity and advanced redundancy features.',
-    image: '/images/products/rhino-sr224.jpg',
+    image: `${DO_ASSET_BASE_URL}/products/rhino-sr224.webp`,
     specs: ['24x HDD Bays', '480TB Raw Capacity', 'Dual Xeon Silver', '128GB DDR5 ECC'],
     features: ['Hot-swappable Drives', 'IPMI Management', 'Dual Redundant PSU'],
     bestFor: 'Enterprise storage, 350-400 cameras'
@@ -73,7 +75,7 @@ const defaultProducts: Product[] = [
     name: 'AeroStor Nova-360',
     category: 'Software-Defined Storage',
     description: 'Scalable software-defined storage with unlimited capacity and self-healing capabilities.',
-    image: '/images/products/aerostor-nova-360.jpg',
+    image: `${DO_ASSET_BASE_URL}/products/aerostor-nova-360.webp`,
     specs: ['Unlimited Storage', 'Ceph-powered SDS', 'High Availability', 'Fault Tolerance'],
     features: ['Distributed Clustering', 'Self-healing', 'Erasure Coding', 'No Licensing Fees'],
     bestFor: 'Large-scale deployments, cloud-like storage'

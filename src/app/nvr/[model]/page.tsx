@@ -7,6 +7,7 @@ import Header from "@/components/Header";
 import Tabs from "@/components/Tabs";
 import ProductBanner from "@/components/ProductBanner";
 import { generateProductSpecPDF } from "@/lib/pdfGenerator";
+import { DO_ASSET_BASE_URL } from "@/lib/constants";
 
 // Helper function to get image path based on product model
 const getImagePath = (model: string): string => {
@@ -17,7 +18,7 @@ const getImagePath = (model: string): string => {
   };
   
   const filename = imageMap[model] || `${model}.webp`;
-  return `/images/NVR/${filename}`;
+  return `${DO_ASSET_BASE_URL}/NVR/${filename}`;
 };
 
 // NVR Product specifications data structure
@@ -692,7 +693,7 @@ export default function NVRProductDetailPage() {
           <div>
             <div className="relative h-8 w-36 mb-4">
               <Image 
-                src="/images/company_logo/aeroskop_logo.png" 
+                src={`${DO_ASSET_BASE_URL}/company_logo/aeroskop_logo.webp`} 
                 alt="Aeroskop" 
                 fill 
                 className="object-contain" 

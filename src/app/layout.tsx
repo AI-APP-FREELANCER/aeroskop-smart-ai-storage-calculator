@@ -27,8 +27,13 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <head>
-        <Script crossOrigin="anonymous" src="//unpkg.com/same-runtime/dist/index.global.js" />
+        <Script 
+          crossOrigin="anonymous" 
+          src="//unpkg.com/same-runtime/dist/index.global.js"
+          strategy="afterInteractive"
+        />
         <link rel="preconnect" href="https://ext.same-assets.com" />
+        <meta httpEquiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https://ext.same-assets.com https://unpkg.com data: blob:; connect-src 'self' http://localhost:* https://* ws: wss: http://unpkg.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com http://unpkg.com; script-src-elem 'self' 'unsafe-inline' https://unpkg.com http://unpkg.com; style-src 'self' 'unsafe-inline';" />
       </head>
       <body suppressHydrationWarning className="antialiased">
         <ClientBody>{children}</ClientBody>

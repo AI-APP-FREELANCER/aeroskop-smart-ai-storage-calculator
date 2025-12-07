@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# DigitalOcean assets - images are hosted on DigitalOcean Spaces, not in repo
+/public/images/
+/public/videos/
+/public/ASK_DATASHEETS/
+
+# Keep only essential public assets (if any)
+!/public/.gitkeep

@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import Header from "@/components/Header";
 import ProductBanner from "@/components/ProductBanner";
+import { DO_ASSET_BASE_URL } from "@/lib/constants";
 
 // Helper function to get image path based on product model
 const getImagePath = (model: string): string => {
@@ -14,7 +15,7 @@ const getImagePath = (model: string): string => {
   };
   
   const filename = imageMap[model] || `${model}.webp`;
-  return `/images/Rhino-storage-server/${filename}`;
+  return `${DO_ASSET_BASE_URL}/Rhino-storage-server/${filename}`;
 };
 
 // Product data - simplified for clean card design
@@ -41,7 +42,7 @@ export default function RhinoServers() {
       <Header />
       
       {/* Category-Specific Product Banner (Top) */}
-      <ProductBanner category="Rhino Storage" imagePath="/images/Rhino-storage-server/ASK-SR212.webp" caption="Enterprise Storage Solutions: Scalable Capacity for Long-Term Retention." />
+      <ProductBanner category="Rhino Storage" imagePath={`${DO_ASSET_BASE_URL}/Rhino-storage-server/ASK-SR212.webp`} caption="Enterprise Storage Solutions: Scalable Capacity for Long-Term Retention." />
       
       {/* Page Title & Introduction Section */}
       <section className="pt-12 pb-16 bg-white">
@@ -91,6 +92,8 @@ export default function RhinoServers() {
                       fill
                       className="object-contain transition-transform duration-500 group-hover:scale-110 p-3"
                       style={{ transform: 'scale(0.9)' }}
+                      loading="lazy"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     />
                   </div>
                   
@@ -133,7 +136,7 @@ export default function RhinoServers() {
           <div>
             <div className="relative h-8 w-36 mb-4">
               <Image 
-                src="/images/company_logo/aeroskop_logo.png" 
+                src={`${DO_ASSET_BASE_URL}/company_logo/aeroskop_logo.webp`} 
                 alt="Aeroskop" 
                 fill 
                 className="object-contain" 

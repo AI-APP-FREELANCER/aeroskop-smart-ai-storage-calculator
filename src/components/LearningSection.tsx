@@ -1,5 +1,7 @@
 'use client';
 
+import { DO_ASSET_BASE_URL } from '@/lib/constants';
+
 interface LearningResource {
   id: string;
   title: string;
@@ -25,7 +27,7 @@ const defaultResources: LearningResource[] = [
     type: 'course',
     duration: '2 hours',
     level: 'beginner',
-    image: '/images/learning/storage-fundamentals.jpg',
+    image: `${DO_ASSET_BASE_URL}/learning/storage-fundamentals.webp`,
     url: '#'
   },
   {
@@ -35,7 +37,7 @@ const defaultResources: LearningResource[] = [
     type: 'guide',
     duration: '45 min',
     level: 'intermediate',
-    image: '/images/learning/ai-recommendations.jpg',
+    image: `${DO_ASSET_BASE_URL}/learning/ai-recommendations.webp`,
     url: '#'
   },
   {
@@ -45,7 +47,7 @@ const defaultResources: LearningResource[] = [
     type: 'video',
     duration: '1.5 hours',
     level: 'advanced',
-    image: '/images/learning/enterprise-deployment.jpg',
+    image: `${DO_ASSET_BASE_URL}/learning/enterprise-deployment.webp`,
     url: '#'
   },
   {
@@ -55,7 +57,7 @@ const defaultResources: LearningResource[] = [
     type: 'tool',
     duration: '5 min',
     level: 'beginner',
-    image: '/images/learning/storage-calculator.jpg',
+    image: `${DO_ASSET_BASE_URL}/learning/storage-calculator.webp`,
     url: '#'
   }
 ];

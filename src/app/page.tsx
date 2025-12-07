@@ -11,6 +11,9 @@ import { useState } from "react";
 export default function Home() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [userData, setUserData] = useState(null);
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminPasswordError, setAdminPasswordError] = useState(false);
 
   const handleUserSubmit = async (userInfo: any) => {
     try {
@@ -348,6 +351,57 @@ export default function Home() {
               <li><a href="/core-switches" className="hover:text-slate-900">Core Switches</a></li>
               <li><a href="/workstations" className="hover:text-slate-900">Workstations</a></li>
               <li><a href="/strak-vms" className="hover:text-slate-900">Strak VMS</a></li>
+              <li>
+                {!showAdminPassword ? (
+                  <button
+                    onClick={() => setShowAdminPassword(true)}
+                    className="hover:text-slate-900 text-left"
+                  >
+                    Admin
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    <input
+                      type="password"
+                      value={adminPassword}
+                      onChange={(e) => {
+                        setAdminPassword(e.target.value);
+                        setAdminPasswordError(false);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          if (adminPassword === 'Aeroskop-Admin-Key') {
+                            window.location.href = '/admin';
+                          } else {
+                            setAdminPasswordError(true);
+                            setAdminPassword('');
+                          }
+                        } else if (e.key === 'Escape') {
+                          setShowAdminPassword(false);
+                          setAdminPassword('');
+                          setAdminPasswordError(false);
+                        }
+                      }}
+                      placeholder="Enter admin password"
+                      className="px-2 py-1 text-sm border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      autoFocus
+                    />
+                    {adminPasswordError && (
+                      <p className="text-xs text-red-600">Incorrect password. Press Escape to cancel.</p>
+                    )}
+                    <button
+                      onClick={() => {
+                        setShowAdminPassword(false);
+                        setAdminPassword('');
+                        setAdminPasswordError(false);
+                      }}
+                      className="text-xs text-slate-500 hover:text-slate-700"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </li>
             </ul>
           </div>
           <div>

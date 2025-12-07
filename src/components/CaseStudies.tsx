@@ -1,5 +1,7 @@
 'use client';
 
+import { DO_ASSET_BASE_URL } from '@/lib/constants';
+
 interface CaseStudy {
   id: string;
   title: string;
@@ -27,7 +29,7 @@ const defaultCaseStudies: CaseStudy[] = [
     company: 'TechMart Retail',
     industry: 'Retail',
     description: 'Large retail chain deployed AeroStor Nova-360 for 200+ camera surveillance system across multiple locations.',
-    image: '/images/case-studies/retail-deployment.jpg',
+    image: `${DO_ASSET_BASE_URL}/case-studies/retail-deployment.webp`,
     solution: 'AeroStor Nova-360 Software-Defined Storage',
     results: [
       '40% reduction in storage costs',
@@ -45,7 +47,7 @@ const defaultCaseStudies: CaseStudy[] = [
     company: 'Global Manufacturing Co.',
     industry: 'Manufacturing',
     description: 'Heavy manufacturing facility implemented Rhino ASK-SR224 for high-capacity storage and industrial-grade reliability.',
-    image: '/images/case-studies/manufacturing-facility.jpg',
+    image: `${DO_ASSET_BASE_URL}/case-studies/manufacturing-facility.webp`,
     solution: 'Aeroskop Rhino ASK-SR224 (4U Storage Server)',
     results: [
       '480TB raw storage capacity',
@@ -63,7 +65,7 @@ const defaultCaseStudies: CaseStudy[] = [
     company: 'MetroCorp Enterprises',
     industry: 'Corporate',
     description: 'Modern office complex implemented AeroFlex AF-64128 for comprehensive surveillance and workstation integration.',
-    image: '/images/case-studies/office-complex.jpg',
+    image: `${DO_ASSET_BASE_URL}/case-studies/office-complex.webp`,
     solution: 'AeroFlex AF-64128 NVR (Enterprise Solution)',
     results: [
       '128 camera capacity',

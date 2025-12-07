@@ -11,7 +11,9 @@ const getDatabaseConfig = () => {
       database: url.pathname.slice(1), // Remove leading slash
       user: url.username,
       password: url.password,
-      ssl: url.hostname.includes('amazonaws.com') ? { rejectUnauthorized: false } : false,
+      ssl: url.hostname.includes('amazonaws.com') || url.hostname.includes('digitalocean.com') 
+        ? { rejectUnauthorized: false } 
+        : false,
     };
   }
   
@@ -22,7 +24,9 @@ const getDatabaseConfig = () => {
     database: process.env.DB_NAME || 'aeroskop_db',
     user: process.env.DB_USER || 'aeroskop_user',
     password: process.env.DB_PASSWORD || 'aeroskop_password',
-    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+    ssl: process.env.DB_SSL === 'true' || process.env.DB_HOST?.includes('digitalocean.com')
+      ? { rejectUnauthorized: false } 
+      : false,
   };
 };
 
