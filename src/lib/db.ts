@@ -12,7 +12,10 @@ const getDatabaseConfig = () => {
       user: url.username,
       password: url.password,
       ssl: url.hostname.includes('amazonaws.com') || url.hostname.includes('digitalocean.com') 
-        ? { rejectUnauthorized: false } 
+        ? { 
+            rejectUnauthorized: false,
+            require: true
+          } 
         : false,
     };
   }
@@ -25,7 +28,10 @@ const getDatabaseConfig = () => {
     user: process.env.DB_USER || 'aeroskop_user',
     password: process.env.DB_PASSWORD || 'aeroskop_password',
     ssl: process.env.DB_SSL === 'true' || process.env.DB_HOST?.includes('digitalocean.com')
-      ? { rejectUnauthorized: false } 
+      ? { 
+          rejectUnauthorized: false,
+          require: true
+        } 
       : false,
   };
 };
