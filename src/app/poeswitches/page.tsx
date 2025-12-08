@@ -16,7 +16,7 @@ const getImagePath = (model: string): string => {
   };
   
   const filename = imageMap[model] || `${model}.webp`;
-  return `${DO_ASSET_BASE_URL}/POE_Switch/${filename}`;
+  return `${DO_ASSET_BASE_URL}/images/POE_Switch/${filename}`;
 };
 
 // Product data - simplified for clean card design
@@ -50,7 +50,7 @@ export default function PoESwitches() {
       <Header />
       
       {/* Category-Specific Product Banner (Top) */}
-      <ProductBanner category="POE Switches" imagePath={`${DO_ASSET_BASE_URL}/POE_Switch/ASK808GP1G1SFP.webp`} caption="Power Over Ethernet: Reliable Network Infrastructure for Surveillance." />
+      <ProductBanner category="POE Switches" imagePath={`${DO_ASSET_BASE_URL}/images/POE_Switch/ASK808GP1G1SFP.webp`} caption="Power Over Ethernet: Reliable Network Infrastructure for Surveillance." />
       
       {/* Page Title & Introduction Section */}
       <section className="pt-12 pb-16 bg-white">
@@ -144,7 +144,7 @@ export default function PoESwitches() {
           <div>
             <div className="relative h-8 w-36 mb-4">
               <Image 
-                src={`${DO_ASSET_BASE_URL}/company_logo/aeroskop_logo.webp`} 
+                src={`${DO_ASSET_BASE_URL}/images/company_logo/aeroskop_logo.webp`} 
                 alt="Aeroskop" 
                 fill 
                 className="object-contain" 

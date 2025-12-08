@@ -530,7 +530,7 @@ function validateAndFormatGeminiResponse(
         productMap.set(productName, {
           product_name: productName,
           product_model: product.product_model || productSpecs?.product_model || 'N/A',
-          product_image_url: `${DO_ASSET_BASE_URL}/products/${(product.product_model || productSpecs?.product_model || 'default').toLowerCase().replace(/\s+/g, '-')}.webp`,
+          product_image_url: `${DO_ASSET_BASE_URL}/images/products/${(product.product_model || productSpecs?.product_model || 'default').toLowerCase().replace(/\s+/g, '-')}.webp`,
           product_url: getProductUrl(productName),
           channel_capacity: product.channel_capacity || productSpecs?.channel_capacity || 'N/A',
           storage_capacity_tb: product.storage_capacity_tb || productSpecs?.storage_capacity_tb || 0,
@@ -561,7 +561,7 @@ function validateAndFormatGeminiResponse(
         {
           product_name: bestProduct,
           product_model: productSpecs.product_model,
-          product_image_url: `${DO_ASSET_BASE_URL}/products/${productSpecs.product_model.toLowerCase().replace(/\s+/g, '-')}.webp`,
+          product_image_url: `${DO_ASSET_BASE_URL}/images/products/${productSpecs.product_model.toLowerCase().replace(/\s+/g, '-')}.webp`,
           product_url: getProductUrl(bestProduct),
           channel_capacity: productSpecs.channel_capacity,
           storage_capacity_tb: productSpecs.storage_capacity_tb,
@@ -689,7 +689,7 @@ function generateMockRecommendations(input: any): AIRecommendationResponse {
     {
       product_name: bestProduct,
       product_model: productSpecs.product_model,
-      product_image_url: `${DO_ASSET_BASE_URL}/products/${productSpecs.product_model.toLowerCase().replace(/\s+/g, '-')}.webp`,
+      product_image_url: `${DO_ASSET_BASE_URL}/images/products/${productSpecs.product_model.toLowerCase().replace(/\s+/g, '-')}.webp`,
       product_url: getProductUrl(bestProduct),
       channel_capacity: productSpecs.channel_capacity,
       storage_capacity_tb: productSpecs.storage_capacity_tb,

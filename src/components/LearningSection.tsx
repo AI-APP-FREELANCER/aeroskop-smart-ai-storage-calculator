@@ -27,7 +27,7 @@ const defaultResources: LearningResource[] = [
     type: 'course',
     duration: '2 hours',
     level: 'beginner',
-    image: `${DO_ASSET_BASE_URL}/learning/storage-fundamentals.webp`,
+    image: `${DO_ASSET_BASE_URL}/images/learning/storage-fundamentals.webp`,
     url: '#'
   },
   {
@@ -37,7 +37,7 @@ const defaultResources: LearningResource[] = [
     type: 'guide',
     duration: '45 min',
     level: 'intermediate',
-    image: `${DO_ASSET_BASE_URL}/learning/ai-recommendations.webp`,
+    image: `${DO_ASSET_BASE_URL}/images/learning/ai-recommendations.webp`,
     url: '#'
   },
   {
@@ -47,7 +47,7 @@ const defaultResources: LearningResource[] = [
     type: 'video',
     duration: '1.5 hours',
     level: 'advanced',
-    image: `${DO_ASSET_BASE_URL}/learning/enterprise-deployment.webp`,
+    image: `${DO_ASSET_BASE_URL}/images/learning/enterprise-deployment.webp`,
     url: '#'
   },
   {
@@ -57,7 +57,7 @@ const defaultResources: LearningResource[] = [
     type: 'tool',
     duration: '5 min',
     level: 'beginner',
-    image: `${DO_ASSET_BASE_URL}/learning/storage-calculator.webp`,
+    image: `${DO_ASSET_BASE_URL}/images/learning/storage-calculator.webp`,
     url: '#'
   }
 ];

@@ -18,7 +18,7 @@ const getImagePath = (model: string): string => {
   };
   
   const filename = imageMap[model] || `${model}.webp`;
-  return `${DO_ASSET_BASE_URL}/NVR/${filename}`;
+  return `${DO_ASSET_BASE_URL}/images/NVR/${filename}`;
 };
 
 // NVR Product specifications data structure
@@ -693,7 +693,7 @@ export default function NVRProductDetailPage() {
           <div>
             <div className="relative h-8 w-36 mb-4">
               <Image 
-                src={`${DO_ASSET_BASE_URL}/company_logo/aeroskop_logo.webp`} 
+                src={`${DO_ASSET_BASE_URL}/images/company_logo/aeroskop_logo.webp`} 
                 alt="Aeroskop" 
                 fill 
                 className="object-contain" 

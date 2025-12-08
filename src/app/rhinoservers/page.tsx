@@ -15,7 +15,7 @@ const getImagePath = (model: string): string => {
   };
   
   const filename = imageMap[model] || `${model}.webp`;
-  return `${DO_ASSET_BASE_URL}/Rhino-storage-server/${filename}`;
+  return `${DO_ASSET_BASE_URL}/images/Rhino-storage-server/${filename}`;
 };
 
 // Product data - simplified for clean card design
@@ -42,7 +42,7 @@ export default function RhinoServers() {
       <Header />
       
       {/* Category-Specific Product Banner (Top) */}
-      <ProductBanner category="Rhino Storage" imagePath={`${DO_ASSET_BASE_URL}/Rhino-storage-server/ASK-SR212.webp`} caption="Enterprise Storage Solutions: Scalable Capacity for Long-Term Retention." />
+      <ProductBanner category="Rhino Storage" imagePath={`${DO_ASSET_BASE_URL}/images/Rhino-storage-server/ASK-SR212.webp`} caption="Enterprise Storage Solutions: Scalable Capacity for Long-Term Retention." />
       
       {/* Page Title & Introduction Section */}
       <section className="pt-12 pb-16 bg-white">
@@ -136,7 +136,7 @@ export default function RhinoServers() {
           <div>
             <div className="relative h-8 w-36 mb-4">
               <Image 
-                src={`${DO_ASSET_BASE_URL}/company_logo/aeroskop_logo.webp`} 
+                src={`${DO_ASSET_BASE_URL}/images/company_logo/aeroskop_logo.webp`} 
                 alt="Aeroskop" 
                 fill 
                 className="object-contain" 

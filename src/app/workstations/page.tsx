@@ -17,7 +17,7 @@ const getImagePath = (model: string): string => {
   };
   
   const filename = imageMap[model] || `${model}.webp`;
-  return `${DO_ASSET_BASE_URL}/Work_Stations/${filename}`;
+  return `${DO_ASSET_BASE_URL}/images/Work_Stations/${filename}`;
 };
 
 // Product data - simplified for clean card design
@@ -58,7 +58,7 @@ export default function Workstations() {
       <Header />
       
       {/* Category-Specific Product Banner (Top) */}
-      <ProductBanner category="Workstations" imagePath={`${DO_ASSET_BASE_URL}/Work_Stations/ASK-WS-i9.webp`} caption="Professional Workstations: Optimized for Security Monitoring and VMS Operations." />
+      <ProductBanner category="Workstations" imagePath={`${DO_ASSET_BASE_URL}/images/Work_Stations/ASK-WS-i9.webp`} caption="Professional Workstations: Optimized for Security Monitoring and VMS Operations." />
       
       {/* Page Title & Introduction Section */}
       <section className="pt-12 pb-16 bg-white">
@@ -152,7 +152,7 @@ export default function Workstations() {
           <div>
             <div className="relative h-8 w-36 mb-4">
               <Image 
-                src={`${DO_ASSET_BASE_URL}/company_logo/aeroskop_logo.webp`} 
+                src={`${DO_ASSET_BASE_URL}/images/company_logo/aeroskop_logo.webp`} 
                 alt="Aeroskop" 
                 fill 
                 className="object-contain" 

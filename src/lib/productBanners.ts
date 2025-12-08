@@ -79,14 +79,14 @@ export const PRODUCT_BANNER_DATA: ProductBannerData[] = [
 /**
  * Converts contentFetchId to image file path
  * Extracts model name from "uploaded:ASK-5D-IR.webp-..." format
- * Returns path: ${DO_ASSET_BASE_URL}/Camera/ASK-5D-IR.webp
+ * Returns path: ${DO_ASSET_BASE_URL}/images/Camera/ASK-5D-IR.webp
  */
 export function contentFetchIdToImagePath(contentFetchId: string): string {
   const match = contentFetchId.match(/uploaded:([^.]+\.webp)/);
   if (match && match[1]) {
-    return `${DO_ASSET_BASE_URL}/Camera/${match[1]}`;
+    return `${DO_ASSET_BASE_URL}/images/Camera/${match[1]}`;
   }
-  return `${DO_ASSET_BASE_URL}/Camera/default.webp`; // fallback
+  return `${DO_ASSET_BASE_URL}/images/Camera/default.webp`; // fallback
 }
 
 /**

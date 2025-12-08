@@ -26,7 +26,7 @@ export default function Header() {
       <div className="container flex items-center gap-6 py-3" role="navigation" aria-label="Primary">
         <Link href="/" className="flex items-center gap-3" aria-label="Aeroskop home">
           <Image
-            src={`${DO_ASSET_BASE_URL}/company_logo/aeroskop_logo.webp`}
+            src={`${DO_ASSET_BASE_URL}/images/company_logo/aeroskop_logo.webp`}
             alt="Aeroskop"
             width={120}
             height={40}

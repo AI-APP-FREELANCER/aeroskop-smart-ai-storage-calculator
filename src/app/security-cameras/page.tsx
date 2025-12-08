@@ -22,7 +22,7 @@ const getImagePath = (model: string): string => {
   };
   
   const filename = imageMap[model] || `${model}.webp`;
-  return `${DO_ASSET_BASE_URL}/Camera/${filename}`;
+  return `${DO_ASSET_BASE_URL}/images/Camera/${filename}`;
 };
 
 // Product data - simplified for clean card design
@@ -192,7 +192,7 @@ export default function SecurityCameras() {
           <div>
             <div className="relative h-8 w-36 mb-4">
               <Image 
-                src={`${DO_ASSET_BASE_URL}/company_logo/aeroskop_logo.webp`} 
+                src={`${DO_ASSET_BASE_URL}/images/company_logo/aeroskop_logo.webp`} 
                 alt="Aeroskop" 
                 fill 
                 className="object-contain" 

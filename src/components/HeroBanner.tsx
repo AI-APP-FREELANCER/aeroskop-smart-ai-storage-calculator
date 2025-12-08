@@ -13,10 +13,10 @@ interface HeroBannerProps {
 
 // Available banners for random selection (excluding Hero-Banner-Home-2.webp which is reserved for Home Page)
 const availableBanners = [
-  `${DO_ASSET_BASE_URL}/Hero-Banners/Hero-Banner-Home-1.webp`,
-  `${DO_ASSET_BASE_URL}/Hero-Banners/Hero-Banner-Home-1-1.webp`,
-  `${DO_ASSET_BASE_URL}/Hero-Banners/Hero-Banner-Home-1-2.webp`,
-  `${DO_ASSET_BASE_URL}/Hero-Banners/Hero-Banner-Home-1-3.webp`,
+  `${DO_ASSET_BASE_URL}/images/Hero-Banners/Hero-Banner-Home-1.webp`,
+  `${DO_ASSET_BASE_URL}/images/Hero-Banners/Hero-Banner-Home-1-1.webp`,
+  `${DO_ASSET_BASE_URL}/images/Hero-Banners/Hero-Banner-Home-1-2.webp`,
+  `${DO_ASSET_BASE_URL}/images/Hero-Banners/Hero-Banner-Home-1-3.webp`,
 ];
 
 export default function HeroBanner({ 

@@ -14,7 +14,7 @@ export default function StrakVMS() {
       <section className="relative pt-24 pb-20 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 overflow-hidden">
         <div className="absolute inset-0 opacity-20">
           <Image
-            src={`${DO_ASSET_BASE_URL}/Stark-VMS/hero-img.webp`}
+            src={`${DO_ASSET_BASE_URL}/images/Stark-VMS/hero-img.webp`}
             alt="STRAK VMS"
             fill
             className="object-cover"
@@ -26,7 +26,7 @@ export default function StrakVMS() {
           <div className="max-w-4xl mx-auto">
             <div className="relative w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl border-4 border-white/20 mb-8" style={{ aspectRatio: '32/9' }}>
               <Image
-                src={`${DO_ASSET_BASE_URL}/Stark-VMS/hero-img.webp`}
+                src={`${DO_ASSET_BASE_URL}/images/Stark-VMS/hero-img.webp`}
                 alt="STRAK VMS Interface"
                 fill
                 className="object-cover"
@@ -64,7 +64,7 @@ export default function StrakVMS() {
             {/* Right Column - Image */}
             <div className="w-1/2 relative">
               <Image
-                src={`${DO_ASSET_BASE_URL}/Stark-VMS/sotfware.webp`}
+                src={`${DO_ASSET_BASE_URL}/images/Stark-VMS/sotfware.webp`}
                 alt="STRAK VMS Interface"
                 fill
                 className="object-cover"
@@ -264,7 +264,7 @@ export default function StrakVMS() {
           <div>
             <div className="relative h-8 w-36 mb-4">
               <Image 
-                src={`${DO_ASSET_BASE_URL}/company_logo/aeroskop_logo.webp`} 
+                src={`${DO_ASSET_BASE_URL}/images/company_logo/aeroskop_logo.webp`} 
                 alt="Aeroskop" 
                 fill 
                 className="object-contain" 
